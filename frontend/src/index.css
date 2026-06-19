@@ -5,6 +5,23 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* html,
+body,
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply min-h-screen;
+  }
+} */
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -122,11 +139,12 @@ body {
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
+  min-height: 100vh;
+  width: 100%;
+  /* max-width: 100%; */
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
+  /* border-inline: 1px solid var(--border); */
   min-height: 100svh;
   display: flex;
   flex-direction: column;
