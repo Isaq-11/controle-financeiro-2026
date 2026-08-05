@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.context.Context;
 
 import com.ifpr.backend.model.Usuario;
 import com.ifpr.backend.repository.UsuarioRepository;
@@ -14,8 +15,18 @@ public class UsuarioService {
     @Autowired
     private UsuarioRepository repository;
 
+    @Autowired
+    private EmailService emailService;
+
     public Usuario insert(Usuario usuario){
-        return repository.save(usuario);
+        Usuario usuarioBanco = repository.save(usuario);
+        //emailService.enviarEmail(usuario.getEmail(), "Sucesso", "Cadastro realizado!!");
+
+        Context context = new Context();
+        context.setVariable("nome", usuario.getName());
+
+        emailService.enviarEmailTemplate(usuario.getEmail(), "Sucesso!!", "novoCadastro", context);
+        return usuarioBanco;
     }
 
     public List<Usuario> listAll(){
