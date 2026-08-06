@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.context.Context;
 
+import com.ifpr.backend.exception.ResourceNotFoundException;
 import com.ifpr.backend.model.Usuario;
 import com.ifpr.backend.repository.UsuarioRepository;
 
@@ -16,17 +16,10 @@ public class UsuarioService {
     private UsuarioRepository repository;
 
     @Autowired
-    private EmailService emailService;
+    private AuthService authService;
 
     public Usuario insert(Usuario usuario){
-        Usuario usuarioBanco = repository.save(usuario);
-        //emailService.enviarEmail(usuario.getEmail(), "Sucesso", "Cadastro realizado!!");
-
-        Context context = new Context();
-        context.setVariable("nome", usuario.getName());
-
-        emailService.enviarEmailTemplate(usuario.getEmail(), "Sucesso!!", "novoCadastro", context);
-        return usuarioBanco;
+        return authService.cadastrar(usuario);
     }
 
     public List<Usuario> listAll(){
@@ -34,8 +27,8 @@ public class UsuarioService {
     }
 
     public Usuario findById(Long id){
-        Usuario usuario = repository.findById(id).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-        return usuario;
+        return repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com id: " + id));
     }
 
     public void delete(Long id){
@@ -49,5 +42,4 @@ public class UsuarioService {
         dbUser.setEmail(usuario.getEmail());
         return repository.save(dbUser);
     }
-
 }

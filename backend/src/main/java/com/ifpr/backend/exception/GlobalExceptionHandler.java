@@ -2,6 +2,7 @@ package com.ifpr.backend.exception;
 
 import java.time.LocalDateTime;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,14 +12,40 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErroResposta> tratarRuntimeException(RuntimeException ex) {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErroResposta> tratarResourceNotFound(ResourceNotFoundException ex) {
         ErroResposta erro = new ErroResposta(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
                 LocalDateTime.now());
-
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErroResposta> tratarBusinessException(BusinessException ex) {
+        ErroResposta erro = new ErroResposta(
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                ex.getMessage(),
+                LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(erro);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErroResposta> tratarDataIntegrity(DataIntegrityViolationException ex) {
+        ErroResposta erro = new ErroResposta(
+                HttpStatus.CONFLICT.value(),
+                "Registro duplicado ou violação de integridade no banco de dados.",
+                LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErroResposta> tratarRuntimeException(RuntimeException ex) {
+        ErroResposta erro = new ErroResposta(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
