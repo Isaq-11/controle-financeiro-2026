@@ -27,17 +27,18 @@ createRoot(document.getElementById("root")).render(
                         <Route path="/redefinicao-senha/informar-email" element={<InformarEmail />} />
                         <Route path="/redefinicao-senha/validacao-codigo" element={<ValidacaoCodigo />} />
                         <Route path="/redefinir-senha/:token" element={<RedefinicaoSenha />} />
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/app/perfil/senha" element={<AlteracaoSenha />} />
                     </Route>
 
                     {/* Rotas Privadas / Autenticadas */}
                     <Route element={<RotaProtegida />}>
                         <Route element={<AppLayout />}>
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/app/perfil/senha" element={<AlteracaoSenha />} />
                         </Route>
                     </Route>
 
                     {/* Redirecionamento Padrão */}
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="*" element={<Navigate to="/login" replace />} />
                 </Routes>
             </BrowserRouter>

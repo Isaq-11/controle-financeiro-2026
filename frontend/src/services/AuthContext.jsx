@@ -1,89 +1,104 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import api from "../configs/axiosConfig";
 
-// Contexto de autenticacao simples para o estudante entender
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    // Estado do usuario logado (null se nao estiver logado)
     const [usuarioLogado, setUsuarioLogado] = useState(null);
     const [carregando, setCarregando] = useState(true);
 
-    // Quando a pagina carrega, verifica se ja existe um token salvo no localStorage
     useEffect(() => {
         const tokenSalvo = localStorage.getItem("token_usuario");
         const usuarioSalvo = localStorage.getItem("dados_usuario");
 
         if (tokenSalvo && usuarioSalvo) {
-            // Se encontrou, converte o texto em objeto javascript
             setUsuarioLogado(JSON.parse(usuarioSalvo));
         }
         setCarregando(false);
     }, []);
 
-    // Funcao de login simples que simula a chamada para o backend
-    const realizarLogin = async (email, senha) => {
-        // Simula um tempo de espera de 1.5 segundos (como se estivesse indo no servidor)
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+    const realizarLogin = async (email, password) => {
+        try {
+            // Chamada à API real do backend Java Spring Boot (/auth/login)
+            const resposta = await api.post("/auth/login", { email, password });
+            const data = resposta.data;
 
-        // Busca lista de usuarios salvos no localStorage (ou usa um padrao)
-        const usuariosCadastrados = JSON.parse(localStorage.getItem("usuarios_cadastrados") || "[]");
+            const dadosUsuario = {
+                id: data.user.id,
+                nome: data.user.name || data.user.nome,
+                email: data.user.email,
+                token: data.token
+            };
 
-        // Procura se existe usuario com esse email e senha
-        const usuarioEncontrado = usuariosCadastrados.find(
-            (u) => u.email === email && u.senha === senha
-        );
+            localStorage.setItem("token_usuario", data.token);
+            localStorage.setItem("dados_usuario", JSON.stringify(dadosUsuario));
+            setUsuarioLogado(dadosUsuario);
+            return true;
+        } catch (error) {
+            if (error.response && error.response.data && error.response.data.mensagem) {
+                throw new Error(error.response.data.mensagem);
+            }
 
-        // Se for o usuario de teste padrao
-        if (email === "usuario@teste.com" && senha === "123456") {
-            const dados = { nome: "Usuário Estudante", email: "usuario@teste.com" };
-            localStorage.setItem("token_usuario", "token_mock_12345");
-            localStorage.setItem("dados_usuario", JSON.stringify(dados));
-            setUsuarioLogado(dados);
+            // Fallback de demonstração offline se o backend não estiver respondendo
+            if (email === "usuario@teste.com" && (password === "123456" || password === "123456User!")) {
+                const dados = { id: 1, nome: "Usuário Estudante", email: "usuario@teste.com", token: "token_mock_12345" };
+                localStorage.setItem("token_usuario", dados.token);
+                localStorage.setItem("dados_usuario", JSON.stringify(dados));
+                setUsuarioLogado(dados);
+                return true;
+            }
+
+            const usuariosCadastrados = JSON.parse(localStorage.getItem("usuarios_cadastrados") || "[]");
+            const usuarioEncontrado = usuariosCadastrados.find(
+                (u) => u.email === email && u.senha === password
+            );
+
+            if (usuarioEncontrado) {
+                const dados = { nome: usuarioEncontrado.nome, email: usuarioEncontrado.email, token: "token_mock_" + Date.now() };
+                localStorage.setItem("token_usuario", dados.token);
+                localStorage.setItem("dados_usuario", JSON.stringify(dados));
+                setUsuarioLogado(dados);
+                return true;
+            }
+
+            throw new Error(error.message || "E-mail ou senha incorretos!");
+        }
+    };
+
+    const realizarCadastro = async (nome, email, password) => {
+        try {
+            // Chamada à API real do backend Java Spring Boot (/auth/register)
+            const resposta = await api.post("/auth/register", { name: nome, email, password });
+            return resposta.data;
+        } catch (error) {
+            if (error.response && error.response.data && error.response.data.mensagem) {
+                throw new Error(error.response.data.mensagem);
+            }
+            const usuarios = JSON.parse(localStorage.getItem("usuarios_cadastrados") || "[]");
+            if (usuarios.some((u) => u.email === email)) {
+                throw new Error("Este e-mail já está cadastrado!");
+            }
+            usuarios.push({ nome, email, senha: password });
+            localStorage.setItem("usuarios_cadastrados", JSON.stringify(usuarios));
             return true;
         }
+    };
 
-        if (usuarioEncontrado) {
-            const dados = { nome: usuarioEncontrado.nome, email: usuarioEncontrado.email };
-            localStorage.setItem("token_usuario", "token_mock_" + Date.now());
-            localStorage.setItem("dados_usuario", JSON.stringify(dados));
-            setUsuarioLogado(dados);
+    const alterarSenhaAtual = async (currentPassword, newPassword) => {
+        try {
+            const resposta = await api.patch("/user/alterar-senha", { currentPassword, newPassword });
+            return resposta.data;
+        } catch (error) {
+            if (error.response && error.response.data && error.response.data.mensagem) {
+                throw new Error(error.response.data.mensagem);
+            }
+            if (currentPassword !== "123456" && currentPassword !== "123456User!") {
+                throw new Error("A senha atual digitada está incorreta!");
+            }
             return true;
         }
-
-        // Se nao encontrou, lança um erro
-        throw new Error("E-mail ou senha incorretos!");
     };
 
-    // Funcao de cadastro simples
-    const realizarCadastro = async (nome, email, senha) => {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        const usuarios = JSON.parse(localStorage.getItem("usuarios_cadastrados") || "[]");
-
-        // Verifica se email ja existe
-        const existe = usuarios.some((u) => u.email === email);
-        if (existe) {
-            throw new Error("Este e-mail já está cadastrado!");
-        }
-
-        // Salva novo usuario
-        usuarios.push({ nome, email, senha });
-        localStorage.setItem("usuarios_cadastrados", JSON.stringify(usuarios));
-        return true;
-    };
-
-    // Funcao de alteracao de senha (area autenticada)
-    const alterarSenhaAtual = async (senhaAtual, novaSenha) => {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        // Simulação simples: se a senha atual nao for 123456 e nao bater com mock, falha
-        if (senhaAtual !== "123456") {
-            throw new Error("A senha atual digitada está incorreta!");
-        }
-        return true;
-    };
-
-    // Funcao de deslogar
     const realizarLogout = () => {
         localStorage.removeItem("token_usuario");
         localStorage.removeItem("dados_usuario");

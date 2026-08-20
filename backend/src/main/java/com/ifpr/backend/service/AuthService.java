@@ -35,6 +35,12 @@ public class AuthService {
     @Autowired
     private CarteiraService carteiraService;
 
+    @Autowired
+    private com.ifpr.backend.repository.CategoriaRepository categoriaRepository;
+
+    @Autowired
+    private com.ifpr.backend.repository.TransacaoRepository transacaoRepository;
+
     // Cadastro de usuário
     public Usuario cadastrar(Usuario usuario) {
         if (usuarioRepository.existsByEmail(usuario.getEmail())) {
@@ -50,7 +56,24 @@ public class AuthService {
         Carteira carteiraPadrao = new Carteira();
         carteiraPadrao.setNome("Minha Carteira Principal");
         carteiraPadrao.setDescricao("Carteira criada automaticamente no cadastro.");
-        carteiraService.criarCarteira(carteiraPadrao, usuarioSalvo);
+        Carteira carteiraSalva = carteiraService.criarCarteira(carteiraPadrao, usuarioSalvo);
+
+        // Adicionar o saldo inicial de R$ 2.500,00 de acordo com as regras do sistema
+        var categorias = categoriaRepository.findByUsuarioIdAndTipo(usuarioSalvo.getId(), com.ifpr.backend.model.TipoTransacao.RECEITA);
+        com.ifpr.backend.model.Categoria catSalario = categorias.stream()
+                .filter(c -> "Salário".equalsIgnoreCase(c.getNome()))
+                .findFirst()
+                .orElse(categorias.isEmpty() ? null : categorias.get(0));
+
+        com.ifpr.backend.model.Transacao transacaoInicial = new com.ifpr.backend.model.Transacao();
+        transacaoInicial.setCarteira(carteiraSalva);
+        transacaoInicial.setCriadoPor(usuarioSalvo);
+        transacaoInicial.setCategoria(catSalario);
+        transacaoInicial.setTipo(com.ifpr.backend.model.TipoTransacao.RECEITA);
+        transacaoInicial.setValor(new java.math.BigDecimal("2500.00"));
+        transacaoInicial.setDescricao("Saldo Inicial da Carteira");
+        transacaoInicial.setData(java.time.LocalDate.now());
+        transacaoRepository.save(transacaoInicial);
 
         // Enviar e-mail de confirmação de cadastro usando o template Thymeleaf
         try {

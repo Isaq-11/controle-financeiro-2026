@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
 import { validarSenha, confirmarSenha, calcularForcaSenha } from "@/utils/validarForm";
+import api from "@/configs/axiosConfig";
 
 const RedefinicaoSenha = () => {
     // 1. Pega o token da URL que foi enviado como parâmetro (ex: /redefinir-senha/123456)
@@ -54,15 +55,20 @@ const RedefinicaoSenha = () => {
         setCarregando(true);
 
         try {
-            // Simula redefinição de senha
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            setMensagemSucesso("Senha redefinida com sucesso! Redirecionando para login...");
+            // Chamada à API real do Backend (/auth/reset-password)
+            const response = await api.post("/auth/reset-password", {
+                token: token,
+                newPassword: novaSenha
+            });
+
+            setMensagemSucesso(response.data?.message || "Senha redefinida com sucesso! Redirecionando para login...");
             
             setTimeout(() => {
                 navigate("/login");
             }, 2000);
-        } catch {
-            setMensagemErroGeral("Erro ao redefinir a senha.");
+        } catch (err) {
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || "Erro ao redefinir a senha. Token pode ter expirado ou ser inválido.";
+            setMensagemErroGeral(msg);
         } finally {
             setCarregando(false);
         }
@@ -76,7 +82,7 @@ const RedefinicaoSenha = () => {
                         Redefinir Senha
                     </CardTitle>
                     <CardDescription className="text-slate-200 text-base">
-                        Token recebido: <span className="font-mono text-slate-100 font-bold">{token || "Sem Token"}</span>
+                        Token ativo: <span className="font-mono bg-slate-900 px-2 py-0.5 rounded text-emerald-400 font-bold">{token || "Sem Token"}</span>
                     </CardDescription>
                 </CardHeader>
 

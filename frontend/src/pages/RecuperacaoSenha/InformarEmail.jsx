@@ -2,16 +2,18 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail } from "lucide-react";
+import { Mail, ArrowRight } from "lucide-react";
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { validarEmail } from "@/utils/validarForm";
+import api from "@/configs/axiosConfig";
 
 const InformarEmail = () => {
     const [email, setEmail] = useState("");
     const [erroEmail, setErroEmail] = useState("");
     const [mensagemNeutra, setMensagemNeutra] = useState("");
+    const [debugToken, setDebugToken] = useState("");
     const [carregando, setCarregando] = useState(false);
 
     const navigate = useNavigate();
@@ -21,6 +23,7 @@ const InformarEmail = () => {
 
         setErroEmail("");
         setMensagemNeutra("");
+        setDebugToken("");
 
         const msgErro = validarEmail(email);
         if (msgErro) {
@@ -31,18 +34,31 @@ const InformarEmail = () => {
         setCarregando(true);
 
         try {
-            // Simula envio de e-mail (2 segundos)
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            
-            // Exibe mensagem neutra (Boa prática de IHC e segurança: não revela se o e-mail existe)
-            setMensagemNeutra("Se o e-mail estiver cadastrado, você receberá o código de verificação em sua caixa de entrada.");
+            // Chamada à API Backend (/auth/forgot-password)
+            const response = await api.post("/auth/forgot-password", { email });
+            const data = response.data;
 
-            // Redireciona para a proxima etapa (validação de código) apos 3 segundos
+            setMensagemNeutra(data.message || "Se este e-mail estiver cadastrado, você receberá as instruções em breve.");
+
+            if (data.debugToken || data.token) {
+                const tokenGerado = data.debugToken || data.token;
+                setDebugToken(tokenGerado);
+            }
+
+            // Redireciona para validação após 3.5 segundos se não clicar no token
+            setTimeout(() => {
+                if (data.debugToken || data.token) {
+                    navigate(`/redefinir-senha/${data.debugToken || data.token}`);
+                } else {
+                    navigate("/redefinicao-senha/validacao-codigo");
+                }
+            }, 3500);
+        } catch {
+            // Mensagem neutra de segurança conforme requisito (PDF 1 Seção 4 / PDF 2 Seção 5.1)
+            setMensagemNeutra("Se este e-mail estiver cadastrado, você receberá as instruções em breve.");
             setTimeout(() => {
                 navigate("/redefinicao-senha/validacao-codigo");
             }, 3000);
-        } catch {
-            setErroEmail("Erro ao processar solicitação.");
         } finally {
             setCarregando(false);
         }
@@ -56,15 +72,29 @@ const InformarEmail = () => {
                         Recuperar Senha
                     </CardTitle>
                     <CardDescription className="text-slate-200 text-base">
-                        Etapa 1: Informe seu e-mail para receber o código de acesso
+                        Etapa 1: Informe seu e-mail para receber o token de redefinição
                     </CardDescription>
                 </CardHeader>
 
                 <CardContent className="flex flex-col space-y-6">
-                    {/* Mensagem Neutra de Confirmação (Cinza/Slate discreto) */}
+                    {/* Mensagem Neutra de Confirmação (Conforme especificado no PDF 2) */}
                     {mensagemNeutra && (
-                        <div className="p-3 rounded bg-slate-700 border border-slate-600 text-slate-200 text-sm font-medium text-center">
-                            {mensagemNeutra}
+                        <div className="p-3.5 rounded bg-slate-900 border border-slate-700 text-slate-200 text-sm font-medium text-center space-y-2">
+                            <p>{mensagemNeutra}</p>
+                            {debugToken && (
+                                <div className="pt-2 border-t border-slate-800 flex flex-col items-center gap-2">
+                                    <span className="text-xs text-amber-400 font-semibold">
+                                        Token de Teste Gerado: <code className="bg-slate-950 px-2 py-1 rounded text-emerald-400">{debugToken}</code>
+                                    </span>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => navigate(`/redefinir-senha/${debugToken}`)}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1"
+                                    >
+                                        Ir para Redefinição com Token <ArrowRight className="w-3 h-3" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -97,7 +127,7 @@ const InformarEmail = () => {
                                 disabled={carregando}
                                 className="w-full bg-slate-900 hover:bg-slate-700 text-slate-100 font-bold h-11 border border-slate-600 transition-colors duration-150"
                             >
-                                {carregando ? "Enviando Código..." : "Enviar Código"}
+                                {carregando ? "Enviando Solicitação..." : "Solicitar Redefinição"}
                             </Button>
                         </div>
                     </form>

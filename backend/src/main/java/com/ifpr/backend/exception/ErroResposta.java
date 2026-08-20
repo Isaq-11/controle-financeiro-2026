@@ -2,6 +2,8 @@ package com.ifpr.backend.exception;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,6 +22,11 @@ public class ErroResposta {
         this.error = getStatusLabel(status);
         this.mensagem = mensagem;
         this.timestamp = timestamp;
+    }
+
+    @JsonProperty("message")
+    public String getMessage() {
+        return mensagem;
     }
 
     private static String getStatusLabel(int status) {
