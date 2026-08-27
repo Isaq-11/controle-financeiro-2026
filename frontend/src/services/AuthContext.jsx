@@ -12,7 +12,12 @@ export const AuthProvider = ({ children }) => {
         const usuarioSalvo = localStorage.getItem("dados_usuario");
 
         if (tokenSalvo && usuarioSalvo) {
-            setUsuarioLogado(JSON.parse(usuarioSalvo));
+            try {
+                setUsuarioLogado(JSON.parse(usuarioSalvo));
+            } catch {
+                localStorage.removeItem("dados_usuario");
+                localStorage.removeItem("token_usuario");
+            }
         }
         setCarregando(false);
     }, []);
@@ -23,45 +28,31 @@ export const AuthProvider = ({ children }) => {
             const resposta = await api.post("/auth/login", { email, password });
             const data = resposta.data;
 
+            // Retorno do LoginResponseDTO: { accessToken, tokenType, expiresIn, usuario }
+            const userObj = data.usuario || data.user || {};
+            const token = data.accessToken || data.token;
+
+            if (!userObj || !userObj.id) {
+                throw new Error("Erro ao obter dados do usuário retornado pelo servidor.");
+            }
+
             const dadosUsuario = {
-                id: data.user.id,
-                nome: data.user.name || data.user.nome,
-                email: data.user.email,
-                token: data.token
+                id: userObj.id,
+                nome: userObj.name || userObj.nome,
+                email: userObj.email,
+                token: token
             };
 
-            localStorage.setItem("token_usuario", data.token);
+            localStorage.setItem("token_usuario", token);
             localStorage.setItem("dados_usuario", JSON.stringify(dadosUsuario));
             setUsuarioLogado(dadosUsuario);
             return true;
         } catch (error) {
-            if (error.response && error.response.data && error.response.data.mensagem) {
-                throw new Error(error.response.data.mensagem);
+            if (error.response && error.response.data) {
+                const msg = error.response.data.mensagem || error.response.data.message || "Credenciais inválidas!";
+                throw new Error(msg);
             }
-
-            // Fallback de demonstração offline se o backend não estiver respondendo
-            if (email === "usuario@teste.com" && (password === "123456" || password === "123456User!")) {
-                const dados = { id: 1, nome: "Usuário Estudante", email: "usuario@teste.com", token: "token_mock_12345" };
-                localStorage.setItem("token_usuario", dados.token);
-                localStorage.setItem("dados_usuario", JSON.stringify(dados));
-                setUsuarioLogado(dados);
-                return true;
-            }
-
-            const usuariosCadastrados = JSON.parse(localStorage.getItem("usuarios_cadastrados") || "[]");
-            const usuarioEncontrado = usuariosCadastrados.find(
-                (u) => u.email === email && u.senha === password
-            );
-
-            if (usuarioEncontrado) {
-                const dados = { nome: usuarioEncontrado.nome, email: usuarioEncontrado.email, token: "token_mock_" + Date.now() };
-                localStorage.setItem("token_usuario", dados.token);
-                localStorage.setItem("dados_usuario", JSON.stringify(dados));
-                setUsuarioLogado(dados);
-                return true;
-            }
-
-            throw new Error(error.message || "E-mail ou senha incorretos!");
+            throw new Error(error.message || "Falha na comunicação com o servidor.");
         }
     };
 
@@ -71,31 +62,24 @@ export const AuthProvider = ({ children }) => {
             const resposta = await api.post("/auth/register", { name: nome, email, password });
             return resposta.data;
         } catch (error) {
-            if (error.response && error.response.data && error.response.data.mensagem) {
-                throw new Error(error.response.data.mensagem);
+            if (error.response && error.response.data) {
+                const msg = error.response.data.mensagem || error.response.data.message || "Erro ao realizar cadastro.";
+                throw new Error(msg);
             }
-            const usuarios = JSON.parse(localStorage.getItem("usuarios_cadastrados") || "[]");
-            if (usuarios.some((u) => u.email === email)) {
-                throw new Error("Este e-mail já está cadastrado!");
-            }
-            usuarios.push({ nome, email, senha: password });
-            localStorage.setItem("usuarios_cadastrados", JSON.stringify(usuarios));
-            return true;
+            throw new Error(error.message || "Erro ao realizar cadastro de novo usuário.");
         }
     };
 
     const alterarSenhaAtual = async (currentPassword, newPassword) => {
         try {
-            const resposta = await api.patch("/user/alterar-senha", { currentPassword, newPassword });
+            const resposta = await api.patch("/api/v1/users/me/password", { currentPassword, newPassword });
             return resposta.data;
         } catch (error) {
-            if (error.response && error.response.data && error.response.data.mensagem) {
-                throw new Error(error.response.data.mensagem);
+            if (error.response && error.response.data) {
+                const msg = error.response.data.mensagem || error.response.data.message || "A senha atual está incorreta.";
+                throw new Error(msg);
             }
-            if (currentPassword !== "123456" && currentPassword !== "123456User!") {
-                throw new Error("A senha atual digitada está incorreta!");
-            }
-            return true;
+            throw new Error(error.message || "Erro ao alterar a senha.");
         }
     };
 

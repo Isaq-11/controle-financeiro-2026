@@ -107,31 +107,31 @@ public class AuthService {
         
         Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
         if (usuario == null) {
-            // Retorna mensagem neutra por segurança (PDF 2, seção 4.1 / 5.1)
-            return new ForgotPasswordResponseDTO(mensagemNeutra, "e-mail-nao-encontrado");
+            return new ForgotPasswordResponseDTO(mensagemNeutra);
         }
 
-        // Criar token único com expiração de 1 hora
-        String token = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        // Criar código numérico único de 6 dígitos
+        String codigo6Digitos = String.format("%06d", new java.util.Random().nextInt(1000000));
         TokenRedefinicaoSenha tokenEntidade = new TokenRedefinicaoSenha();
         tokenEntidade.setUsuario(usuario);
-        tokenEntidade.setToken(token);
+        tokenEntidade.setToken(codigo6Digitos);
         tokenEntidade.setExpiraEm(LocalDateTime.now().plusHours(1));
         tokenEntidade.setUtilizado(false);
 
         tokenRepository.save(tokenEntidade);
 
-        // Enviar e-mail com o token de redefinição
+        // Enviar e-mail de verdade com o código de 6 dígitos usando o template Thymeleaf
         try {
             Context context = new Context();
             context.setVariable("nome", usuario.getName());
-            context.setVariable("token", token);
-            emailService.enviarEmailTemplate(usuario.getEmail(), "Recuperação de Senha - Controle Financeiro", "recuperacaoSenha", context);
+            context.setVariable("token", codigo6Digitos);
+            emailService.enviarEmailTemplate(usuario.getEmail(), "Código de Recuperação de Senha - Controle Financeiro", "recuperacaoSenha", context);
+            System.out.println(">>> [E-MAIL DE RECUPERAÇÃO] Código de 6 dígitos (" + codigo6Digitos + ") enviado para " + usuario.getEmail());
         } catch (Exception e) {
             System.err.println("Erro ao enviar e-mail de recuperação: " + e.getMessage());
         }
 
-        return new ForgotPasswordResponseDTO(mensagemNeutra, token);
+        return new ForgotPasswordResponseDTO(mensagemNeutra);
     }
 
     // Redefinição de Senha com Token

@@ -39,19 +39,17 @@ public class CategoriaController {
 
     private Usuario extrairUsuarioDoHeader(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return usuarioService.listAll().stream().findFirst()
-                    .orElseThrow(() -> new BusinessException("Usuário não autenticado."));
+            throw new BusinessException("Usuário não autenticado.");
         }
         try {
-            String token = authHeader.replace("Bearer ", "");
+            String token = authHeader.replace("Bearer ", "").trim();
             if (token.startsWith("token_bearer_")) {
                 String[] partes = token.split("_");
                 Long userId = Long.parseLong(partes[2]);
                 return usuarioService.findById(userId);
             }
         } catch (Exception e) {}
-        return usuarioService.listAll().stream().findFirst()
-                .orElseThrow(() -> new BusinessException("Usuário não autenticado."));
+        throw new BusinessException("Sessão inválida ou token expirado.");
     }
 
     @GetMapping

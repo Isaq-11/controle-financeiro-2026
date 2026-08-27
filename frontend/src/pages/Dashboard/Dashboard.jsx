@@ -13,31 +13,15 @@ const carteiraService = new CarteiraService();
 const transacaoService = new TransacaoService();
 const categoriaService = new CategoriaService();
 
-// Dados Ficticios (Mock) para demonstração quando não houver backend
-const dadosResumoMock = {
-    saldoAtual: 2500.00,
-    totalReceitas: 2500.00,
-    totalDespesas: 0.00
-};
-
-const dadosGraficoMock = [
-    { dia: "01/Ago", receitas: 2500, despesas: 0 },
-    { dia: "05/Ago", receitas: 0, despesas: 150 },
-    { dia: "10/Ago", receitas: 500, despesas: 200 },
-];
-
-const dadosLancamentosMock = [
-    { id: 1, descricao: "Saldo Inicial da Carteira", valor: 2500.00, tipo: "RECEITA", data: "01/08/2026", categoria: "Salário" }
-];
-
 const Dashboard = () => {
     const [carregando, setCarregando] = useState(true);
-    const [resumo, setResumo] = useState(dadosResumoMock);
-    const [grafico, setGrafico] = useState(dadosGraficoMock);
-    const [lancamentos, setLancamentos] = useState(dadosLancamentosMock);
+    const [resumo, setResumo] = useState({ saldoAtual: 0, totalReceitas: 0, totalDespesas: 0 });
+    const [grafico, setGrafico] = useState([]);
+    const [lancamentos, setLancamentos] = useState([]);
     const [carteiras, setCarteiras] = useState([]);
     const [carteiraSelecionada, setCarteiraSelecionada] = useState(null);
     const [categorias, setCategorias] = useState([]);
+    const [erroGeral, setErroGeral] = useState("");
 
     // Estado do Modal de Nova Transação
     const [modalAberto, setModalAberto] = useState(false);
@@ -54,26 +38,32 @@ const Dashboard = () => {
 
     const carregarDados = async () => {
         setCarregando(true);
+        setErroGeral("");
         try {
             const respCarteiras = await carteiraService.buscarTodos();
             const listaCarteiras = respCarteiras.data || [];
             setCarteiras(listaCarteiras);
 
-            // Carrega categorias do backend
+            // Carrega categorias do usuário do backend
             try {
                 const respCats = await categoriaService.buscarTodos();
                 setCategorias(respCats.data || []);
             } catch (e) {
-                console.log("Erro ao carregar categorias:", e);
+                console.log("Categorias não carregadas:", e);
             }
 
             if (listaCarteiras.length > 0) {
                 const primeiraCarteira = listaCarteiras[0];
                 setCarteiraSelecionada(primeiraCarteira);
                 await carregarDadosCarteira(primeiraCarteira.id);
+            } else {
+                setLancamentos([]);
+                setResumo({ saldoAtual: 0, totalReceitas: 0, totalDespesas: 0 });
+                setGrafico([]);
             }
         } catch (error) {
-            console.log("Modo offline / Dados demonstrativos ativados:", error.message);
+            console.error("Erro ao carregar carteiras:", error);
+            setErroGeral("Não foi possível carregar suas finanças do servidor. Verifique se o backend está em execução.");
         } finally {
             setCarregando(false);
         }
@@ -95,6 +85,10 @@ const Dashboard = () => {
                         receitas: Number(m.income || 0),
                         despesas: Number(m.expense || 0)
                     })));
+                } else {
+                    setGrafico([
+                        { dia: "Atual", receitas: Number(resumoApi.totalIncome || 0), despesas: Number(resumoApi.totalExpense || 0) }
+                    ]);
                 }
             }
 
@@ -111,7 +105,7 @@ const Dashboard = () => {
                 })));
             }
         } catch (err) {
-            console.log("Erro ao atualizar dados da carteira:", err);
+            console.error("Erro ao carregar transações da carteira:", err);
         }
     };
 
@@ -126,49 +120,33 @@ const Dashboard = () => {
 
         const valorNum = parseFloat(novoValor.replace(",", "."));
         if (isNaN(valorNum) || valorNum <= 0) {
-            setMensagemErroModal("Insira um valor maior que zero!");
+            setMensagemErroModal("Insira um valor válido maior que zero!");
+            return;
+        }
+
+        if (!carteiraSelecionada) {
+            setMensagemErroModal("Nenhuma carteira ativa selecionada.");
             return;
         }
 
         setEnviando(true);
         try {
-            if (carteiraSelecionada) {
-                const dto = {
-                    descricao: novaDescricao,
-                    valor: valorNum,
-                    tipo: novoTipo,
-                    data: new Date().toISOString().split("T")[0]
-                };
+            const dto = {
+                descricao: novaDescricao,
+                valor: valorNum,
+                tipo: novoTipo,
+                data: new Date().toISOString().split("T")[0]
+            };
 
-                await transacaoService.criarTransacao(carteiraSelecionada.id, categoriaId || null, dto);
-                await carregarDadosCarteira(carteiraSelecionada.id);
-            } else {
-                // Modo simulado local
-                const novoItem = {
-                    id: Date.now(),
-                    descricao: novaDescricao,
-                    valor: valorNum,
-                    tipo: novoTipo,
-                    data: new Date().toLocaleDateString("pt-BR"),
-                    categoria: novoTipo === "RECEITA" ? "Receita" : "Despesa"
-                };
-                const novosLancamentos = [novoItem, ...lancamentos];
-                setLancamentos(novosLancamentos);
-
-                const rec = novosLancamentos.filter(l => l.tipo === "RECEITA").reduce((acc, l) => acc + l.valor, 0);
-                const desp = novosLancamentos.filter(l => l.tipo === "DESPESA").reduce((acc, l) => acc + l.valor, 0);
-                setResumo({
-                    saldoAtual: rec - desp,
-                    totalReceitas: rec,
-                    totalDespesas: desp
-                });
-            }
+            await transacaoService.criarTransacao(carteiraSelecionada.id, categoriaId || null, dto);
+            await carregarDadosCarteira(carteiraSelecionada.id);
 
             setNovaDescricao("");
             setNovoValor("");
             setModalAberto(false);
         } catch (err) {
-            setMensagemErroModal(err.message || "Erro ao salvar transação no backend!");
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || err.message || "Erro ao salvar transação!";
+            setMensagemErroModal(msg);
         } finally {
             setEnviando(false);
         }
@@ -181,19 +159,10 @@ const Dashboard = () => {
             if (carteiraSelecionada) {
                 await transacaoService.excluirTransacao(carteiraSelecionada.id, id);
                 await carregarDadosCarteira(carteiraSelecionada.id);
-            } else {
-                const filtrados = lancamentos.filter(l => l.id !== id);
-                setLancamentos(filtrados);
-                const rec = filtrados.filter(l => l.tipo === "RECEITA").reduce((acc, l) => acc + l.valor, 0);
-                const desp = filtrados.filter(l => l.tipo === "DESPESA").reduce((acc, l) => acc + l.valor, 0);
-                setResumo({
-                    saldoAtual: rec - desp,
-                    totalReceitas: rec,
-                    totalDespesas: desp
-                });
             }
         } catch (err) {
-            alert("Erro ao excluir: " + (err.message || "Falha na comunicação"));
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || "Erro ao excluir transação";
+            alert(msg);
         }
     };
 
@@ -205,17 +174,23 @@ const Dashboard = () => {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-300 gap-2">
                 <div className="w-8 h-8 border-4 border-slate-600 border-t-slate-100 rounded-full animate-spin"></div>
-                <p className="text-sm font-semibold">Carregando resumo financeiro...</p>
+                <p className="text-sm font-semibold">Carregando dados financeiros da sua conta...</p>
             </div>
         );
     }
 
     return (
         <div className="space-y-6">
+            {erroGeral && (
+                <div className="p-4 rounded-lg bg-rose-950/80 border border-rose-700 text-rose-200 text-sm font-medium">
+                    {erroGeral}
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-50">Dashboard Financeiro</h1>
-                    <p className="text-slate-300 text-sm">Gerencie suas receitas e despesas com integração em tempo real</p>
+                    <p className="text-slate-300 text-sm">Finanças em tempo real armazenadas no seu Banco de Dados</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {carteiraSelecionada && (
@@ -277,7 +252,7 @@ const Dashboard = () => {
             <Card className="bg-slate-800 border-slate-700">
                 <CardHeader>
                     <CardTitle className="text-lg text-slate-100">Fluxo de Caixa (Receitas vs Despesas)</CardTitle>
-                    <p className="text-xs text-slate-300">Comparativo visual acumulado por mês/período</p>
+                    <p className="text-xs text-slate-300">Comparativo visual de Entradas e Saídas registradas no Banco</p>
                 </CardHeader>
                 <CardContent>
                     <div className="h-64 w-full">
@@ -295,7 +270,7 @@ const Dashboard = () => {
                 </CardContent>
             </Card>
 
-            {/* 3. Tabela de Lançamentos Recentes com opção de Exclusão */}
+            {/* 3. Tabela de Lançamentos Recentes com exclusão no Banco de Dados */}
             <Card className="bg-slate-800 border-slate-700">
                 <CardHeader>
                     <CardTitle className="text-lg text-slate-100">Lançamentos Recentes</CardTitle>
@@ -316,7 +291,7 @@ const Dashboard = () => {
                                 {lancamentos.length === 0 ? (
                                     <tr>
                                         <td colSpan="5" className="p-4 text-center text-slate-400">
-                                            Nenhuma transação encontrada.
+                                            Nenhuma transação cadastrada nesta carteira. Clique em "+ Nova Transação" para adicionar.
                                         </td>
                                     </tr>
                                 ) : (
@@ -455,7 +430,7 @@ const Dashboard = () => {
                                     disabled={enviando}
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                                 >
-                                    {enviando ? "Salvando..." : "Salvar Transação"}
+                                    {enviando ? "Salvando no Banco..." : "Salvar Transação"}
                                 </Button>
                             </div>
                         </form>

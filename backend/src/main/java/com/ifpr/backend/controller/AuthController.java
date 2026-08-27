@@ -41,22 +41,17 @@ public class AuthController {
     // Helper para extrair o ID do usuário a partir do Header de Autorização simples
     private Usuario extrairUsuarioDoHeader(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            // Se não fornecido header, busca o primeiro usuário cadastrado ou simula o logado
-            return usuarioService.listAll().stream().findFirst()
-                    .orElseThrow(() -> new BusinessException("Usuário não autenticado."));
+            throw new BusinessException("Usuário não autenticado.");
         }
         try {
-            String token = authHeader.replace("Bearer ", "");
+            String token = authHeader.replace("Bearer ", "").trim();
             if (token.startsWith("token_bearer_")) {
                 String[] partes = token.split("_");
                 Long userId = Long.parseLong(partes[2]);
                 return usuarioService.findById(userId);
             }
-        } catch (Exception e) {
-            // Fallback se o token for mock
-        }
-        return usuarioService.listAll().stream().findFirst()
-                .orElseThrow(() -> new BusinessException("Usuário não autenticado."));
+        } catch (Exception e) {}
+        throw new BusinessException("Sessão inválida ou token expirado.");
     }
 
     // Cadastro de usuário (POST /auth/register)
