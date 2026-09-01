@@ -95,14 +95,33 @@ const Dashboard = () => {
             const transacoesApi = await transacaoService.listarTransacoes(walletId);
             const conteudo = transacoesApi.content || transacoesApi;
             if (Array.isArray(conteudo)) {
-                setLancamentos(conteudo.map(t => ({
-                    id: t.id,
-                    descricao: t.descricao,
-                    valor: t.valor,
-                    tipo: t.tipo,
-                    data: t.data ? new Date(t.data).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR"),
-                    categoria: t.categoria?.nome || "Geral"
-                })));
+                setLancamentos(conteudo.map(t => {
+                    let dataFormatada = "";
+                    if (t.data) {
+                        if (typeof t.data === "string") {
+                            const apenasData = t.data.split("T")[0];
+                            const partes = apenasData.split("-");
+                            if (partes.length === 3) {
+                                dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                            } else {
+                                dataFormatada = new Date(t.data).toLocaleDateString("pt-BR");
+                            }
+                        } else {
+                            dataFormatada = new Date(t.data).toLocaleDateString("pt-BR");
+                        }
+                    } else {
+                        dataFormatada = new Date().toLocaleDateString("pt-BR");
+                    }
+
+                    return {
+                        id: t.id,
+                        descricao: t.descricao,
+                        valor: t.valor,
+                        tipo: t.tipo,
+                        data: dataFormatada,
+                        categoria: t.categoria?.nome || "Geral"
+                    };
+                }));
             }
         } catch (err) {
             console.error("Erro ao carregar transações da carteira:", err);
@@ -131,11 +150,17 @@ const Dashboard = () => {
 
         setEnviando(true);
         try {
+            const agora = new Date();
+            const ano = agora.getFullYear();
+            const mes = String(agora.getMonth() + 1).padStart(2, "0");
+            const dia = String(agora.getDate()).padStart(2, "0");
+            const dataLocalStr = `${ano}-${mes}-${dia}`;
+
             const dto = {
                 descricao: novaDescricao,
                 valor: valorNum,
                 tipo: novoTipo,
-                data: new Date().toISOString().split("T")[0]
+                data: dataLocalStr
             };
 
             await transacaoService.criarTransacao(carteiraSelecionada.id, categoriaId || null, dto);
