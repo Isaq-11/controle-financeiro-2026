@@ -1,4 +1,4 @@
-# FinançaApp — Controle Financeiro Pessoal e Compartilhado
+# Controle Financeiro Pessoal e Compartilhado
 
 Aplicação web full stack para gestão de finanças pessoais e compartilhadas.
 O usuário cadastra receitas e despesas, acompanha um resumo financeiro e pode
