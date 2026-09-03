@@ -5,7 +5,7 @@ O usuário cadastra receitas e despesas, acompanha um resumo financeiro e pode
 compartilhar carteiras com outras pessoas, definindo níveis de acesso
 diferentes para cada uma.
 
-Projeto acadêmico da disciplina de Programação para Web — Parte 1 (frontend)
+Projeto acadêmico da disciplina de Programação Web — Parte 1 (frontend)
 e Parte 2 (backend).
 
 ## Arquitetura
