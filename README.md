@@ -49,7 +49,7 @@ SpringDoc/Swagger.
 > autenticação atual usa um token simples gerado no login
 > (`token_bearer_{id}_{uuid}`), validado manualmente por um header
 > `Authorization: Bearer` em cada controller. Isso cobre a navegação e a
-> proteção de rotas no frontend, mas **não é seguro para produção** — a
+> proteção de rotas no frontend, mas não é seguro para produção. A
 > senha também é comparada e armazenada em texto puro, sem hashing (ver
 > seção "Próximos passos" abaixo).
 
@@ -83,7 +83,7 @@ SpringDoc/Swagger.
    ```
 
 3. Ajuste, se necessário, `application.properties` (usuário do banco,
-   porta, host do MySQL — hoje aponta para `localhost:3306`, usuário
+   porta, host do MySQL (que hoje aponta para `localhost:3306`), usuário
    `root`).
 
 4. Execute a aplicação:
@@ -164,7 +164,7 @@ um usuário de teste automaticamente:
   (Salário, Alimentação, Transporte etc.), para que o dashboard não fique
   vazio no primeiro acesso.
 - **Recuperação de senha com código de 6 dígitos** em vez de link com
-  token na URL: optamos por uma segunda tela de "validar código", com
+  token na URL: optei por uma segunda tela de "validar código", com
   reenvio de e-mail real via Gmail SMTP, para simular de forma mais
   realista o fluxo de um produto real.
 - **Sem Spring Security por enquanto:** o filtro de autenticação foi
