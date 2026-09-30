@@ -9,9 +9,4 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ForgotPasswordResponseDTO {
     private String message;
-    private String debugToken;
-
-    public ForgotPasswordResponseDTO(String message) {
-        this.message = message;
-    }
 }

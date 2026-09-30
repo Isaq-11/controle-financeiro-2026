@@ -28,7 +28,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping({"/api/v1/categories", "/categories"})
-@CrossOrigin
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8081"})
 public class CategoriaController {
 
     @Autowired

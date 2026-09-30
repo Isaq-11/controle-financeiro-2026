@@ -29,7 +29,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping({"/api/v1/wallets", "/wallets"})
-@CrossOrigin
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8081"})
 public class CarteiraController {
 
     @Autowired

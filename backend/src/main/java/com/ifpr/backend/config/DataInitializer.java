@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.ifpr.backend.model.Carteira;
@@ -41,6 +42,9 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private TransacaoRepository transacaoRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Override
     public void run(String... args) throws Exception {
         String emailTeste = "usuario@teste.com";
@@ -50,7 +54,7 @@ public class DataInitializer implements CommandLineRunner {
             Usuario usuario = new Usuario();
             usuario.setName("Usuário Estudante");
             usuario.setEmail(emailTeste);
-            usuario.setPassword("123456User!");
+            usuario.setPassword(passwordEncoder.encode("123456User!"));
             Usuario usuarioSalvo = usuarioRepository.save(usuario);
 
             // Categorias Padrão
@@ -79,7 +83,7 @@ public class DataInitializer implements CommandLineRunner {
             tInicial.setData(LocalDate.now());
             transacaoRepository.save(tInicial);
 
-            System.out.println(">>> DataInitializer: Usuário de teste criados com R$ 2.500,00 de saldo inicial!");
+            System.out.println(">>> DataInitializer: Usuário de teste criado com senha BCrypt e R$ 2.500,00 de saldo inicial!");
         }
     }
 }

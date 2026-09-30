@@ -1,1 +1,21 @@
+# Dependencies
 node_modules/
+
+# Build outputs
+dist/
+target/
+
+# Sensitive secrets and local environments
+application-secrets.properties
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE & OS temporary files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

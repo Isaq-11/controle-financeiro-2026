@@ -4,11 +4,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 
 import com.ifpr.backend.dto.ForgotPasswordResponseDTO;
 import com.ifpr.backend.dto.LoginResponseDTO;
+import com.ifpr.backend.dto.UserResponseDTO;
 import com.ifpr.backend.exception.BusinessException;
 import com.ifpr.backend.exception.ResourceNotFoundException;
 import com.ifpr.backend.model.Carteira;
@@ -41,11 +43,17 @@ public class AuthService {
     @Autowired
     private com.ifpr.backend.repository.TransacaoRepository transacaoRepository;
 
-    // Cadastro de usuário
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    // Cadastro de usuário com criptografia BCrypt da senha
     public Usuario cadastrar(Usuario usuario) {
         if (usuarioRepository.existsByEmail(usuario.getEmail())) {
             throw new BusinessException("Este e-mail já está cadastrado!");
         }
+
+        // Criptografar a senha com BCrypt antes de salvar no banco de dados
+        usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
 
         Usuario usuarioSalvo = usuarioRepository.save(usuario);
 
@@ -87,18 +95,25 @@ public class AuthService {
         return usuarioSalvo;
     }
 
-    // Autenticação / Login
+    // Autenticação / Login com validação segura BCrypt
     public LoginResponseDTO login(String email, String password) {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException("Credenciais inválidas! E-mail não encontrado."));
 
-        if (!usuario.getPassword().equals(password)) {
+        boolean senhaValida = passwordEncoder.matches(password, usuario.getPassword()) || usuario.getPassword().equals(password);
+        if (!senhaValida) {
             throw new BusinessException("Credenciais inválidas! Senha incorreta.");
         }
 
-        // Gerando um token de acesso para a sessão (formato legível e funcional)
+        // Se a senha ainda estava salva em texto puro, atualiza para hash BCrypt automaticamente
+        if (usuario.getPassword().equals(password)) {
+            usuario.setPassword(passwordEncoder.encode(password));
+            usuarioRepository.save(usuario);
+        }
+
+        // Gerando token de acesso para a sessão e retornando UserResponseDTO (sem expor a senha)
         String tokenAcesso = "token_bearer_" + usuario.getId() + "_" + UUID.randomUUID().toString();
-        return new LoginResponseDTO(tokenAcesso, usuario);
+        return new LoginResponseDTO(tokenAcesso, UserResponseDTO.fromEntity(usuario));
     }
 
     // Solicitação de Recuperação de Senha (Esqueci a senha)
@@ -120,7 +135,7 @@ public class AuthService {
 
         tokenRepository.save(tokenEntidade);
 
-        // Enviar e-mail de verdade com o código de 6 dígitos usando o template Thymeleaf
+        // Enviar e-mail com o código de 6 dígitos usando o template Thymeleaf
         try {
             Context context = new Context();
             context.setVariable("nome", usuario.getName());
@@ -134,7 +149,7 @@ public class AuthService {
         return new ForgotPasswordResponseDTO(mensagemNeutra);
     }
 
-    // Redefinição de Senha com Token
+    // Redefinição de Senha com Token e Criptografia BCrypt
     public void redefinirSenha(String token, String newPassword) {
         TokenRedefinicaoSenha tokenEntidade = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new ResourceNotFoundException("Token inválido ou inexistente."));
@@ -148,20 +163,21 @@ public class AuthService {
         }
 
         Usuario usuario = tokenEntidade.getUsuario();
-        usuario.setPassword(newPassword);
+        usuario.setPassword(passwordEncoder.encode(newPassword));
         usuarioRepository.save(usuario);
 
         tokenEntidade.setUtilizado(true);
         tokenRepository.save(tokenEntidade);
     }
 
-    // Alteração de Senha (Área Autenticada)
+    // Alteração de Senha (Área Autenticada) com validação BCrypt
     public void alterarSenha(Usuario usuario, String currentPassword, String newPassword) {
-        if (!usuario.getPassword().equals(currentPassword)) {
+        boolean senhaAtualValida = passwordEncoder.matches(currentPassword, usuario.getPassword()) || usuario.getPassword().equals(currentPassword);
+        if (!senhaAtualValida) {
             throw new BusinessException("A senha atual digitada está incorreta!");
         }
 
-        usuario.setPassword(newPassword);
+        usuario.setPassword(passwordEncoder.encode(newPassword));
         usuarioRepository.save(usuario);
     }
 }
