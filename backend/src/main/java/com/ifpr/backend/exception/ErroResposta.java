@@ -4,12 +4,10 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class ErroResposta {
     private int status;
@@ -24,6 +22,45 @@ public class ErroResposta {
         this.timestamp = timestamp;
     }
 
+    public ErroResposta(int status, String error, String mensagem, LocalDateTime timestamp) {
+        this.status = status;
+        this.error = error;
+        this.mensagem = mensagem;
+        this.timestamp = timestamp;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public String getError() {
+        return error;
+    }
+
+    public void setError(String error) {
+        this.error = error;
+    }
+
+    public String getMensagem() {
+        return mensagem;
+    }
+
+    public void setMensagem(String mensagem) {
+        this.mensagem = mensagem;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
     @JsonProperty("message")
     public String getMessage() {
         return mensagem;
@@ -31,13 +68,20 @@ public class ErroResposta {
 
     private static String getStatusLabel(int status) {
         switch (status) {
-            case 400: return "Bad Request";
-            case 401: return "Unauthorized";
-            case 403: return "Forbidden";
-            case 404: return "Not Found";
-            case 409: return "Conflict";
-            case 422: return "Unprocessable Entity";
-            default: return "Internal Server Error";
+            case 400:
+                return "Bad Request";
+            case 401:
+                return "Unauthorized";
+            case 403:
+                return "Forbidden";
+            case 404:
+                return "Not Found";
+            case 409:
+                return "Conflict";
+            case 422:
+                return "Unprocessable Entity";
+            default:
+                return "Internal Server Error";
         }
     }
 }

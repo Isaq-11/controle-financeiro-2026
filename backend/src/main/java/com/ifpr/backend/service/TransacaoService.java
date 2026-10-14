@@ -36,6 +36,9 @@ public class TransacaoService {
     @Autowired
     private CategoriaRepository categoriaRepository;
 
+    @Autowired
+    private SseNotificacaoService sseNotificacaoService;
+
     public Page<Transacao> listarComFiltros(
             Long carteiraId,
             TipoTransacao tipo,
@@ -74,7 +77,22 @@ public class TransacaoService {
             transacao.setCategoria(categoria);
         }
 
-        return transacaoRepository.save(transacao);
+        Transacao salva = transacaoRepository.save(transacao);
+
+        Map<String, Object> evento = new HashMap<>();
+        evento.put("carteiraId", carteiraId);
+        evento.put("acao", "CRIADA");
+        evento.put("transacaoId", salva.getId());
+        evento.put("descricao", salva.getDescricao());
+        evento.put("valor", salva.getValor());
+        evento.put("tipo", salva.getTipo() != null ? salva.getTipo().name() : null);
+        evento.put("autorId", usuario.getId());
+        evento.put("autorNome", usuario.getName());
+        evento.put("timestamp", System.currentTimeMillis());
+
+        sseNotificacaoService.notificarMembrosCarteira(carteiraId, "transacao-alterada", evento);
+
+        return salva;
     }
 
     public Transacao atualizar(Long carteiraId, Long id, Transacao transacaoAtualizada, Long categoriaId, Usuario usuario) {
@@ -95,13 +113,45 @@ public class TransacaoService {
             dbTransacao.setCategoria(null);
         }
 
-        return transacaoRepository.save(dbTransacao);
+        Transacao salva = transacaoRepository.save(dbTransacao);
+
+        Map<String, Object> evento = new HashMap<>();
+        evento.put("carteiraId", carteiraId);
+        evento.put("acao", "ATUALIZADA");
+        evento.put("transacaoId", salva.getId());
+        evento.put("descricao", salva.getDescricao());
+        evento.put("valor", salva.getValor());
+        evento.put("tipo", salva.getTipo() != null ? salva.getTipo().name() : null);
+        evento.put("autorId", usuario.getId());
+        evento.put("autorNome", usuario.getName());
+        evento.put("timestamp", System.currentTimeMillis());
+
+        sseNotificacaoService.notificarMembrosCarteira(carteiraId, "transacao-alterada", evento);
+
+        return salva;
     }
 
     public void excluir(Long carteiraId, Long id, Usuario usuario) {
         carteiraService.validarPermissaoEscrita(carteiraId, usuario.getId());
         Transacao dbTransacao = buscarPorId(carteiraId, id, usuario);
+        String desc = dbTransacao.getDescricao();
+        BigDecimal val = dbTransacao.getValor();
+        TipoTransacao tipo = dbTransacao.getTipo();
+
         transacaoRepository.delete(dbTransacao);
+
+        Map<String, Object> evento = new HashMap<>();
+        evento.put("carteiraId", carteiraId);
+        evento.put("acao", "EXCLUIDA");
+        evento.put("transacaoId", id);
+        evento.put("descricao", desc);
+        evento.put("valor", val);
+        evento.put("tipo", tipo != null ? tipo.name() : null);
+        evento.put("autorId", usuario.getId());
+        evento.put("autorNome", usuario.getName());
+        evento.put("timestamp", System.currentTimeMillis());
+
+        sseNotificacaoService.notificarMembrosCarteira(carteiraId, "transacao-alterada", evento);
     }
 
     // Calcula o Resumo Financeiro (Dashboard) conforme especificado no PDF 2, seção 5.7

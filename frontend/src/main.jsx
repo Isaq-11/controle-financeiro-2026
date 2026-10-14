@@ -13,6 +13,7 @@ import InformarEmail from "./pages/RecuperacaoSenha/InformarEmail";
 import ValidacaoCodigo from "./pages/RecuperacaoSenha/ValidacaoCodigo";
 import RedefinicaoSenha from "./pages/RecuperacaoSenha/RedefinicaoSenha";
 import Dashboard from "./pages/Dashboard/Dashboard";
+import Carteiras from "./pages/Carteiras/Carteiras";
 import AlteracaoSenha from "./pages/Perfil/AlteracaoSenha";
 
 createRoot(document.getElementById("root")).render(
@@ -33,6 +34,7 @@ createRoot(document.getElementById("root")).render(
                     <Route element={<RotaProtegida />}>
                         <Route element={<AppLayout />}>
                             <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/carteiras" element={<Carteiras />} />
                             <Route path="/app/perfil/senha" element={<AlteracaoSenha />} />
                         </Route>
                     </Route>

@@ -33,7 +33,8 @@ public class Usuario {
     @Column(unique = true, nullable = false)
     private String email;
 
-    // Usamos WRITE_ONLY para aceitar a senha no cadastro/login, mas nunca devolver a senha no JSON de resposta
+    // Usamos WRITE_ONLY para aceitar a senha no cadastro/login, mas nunca devolver
+    // a senha no JSON de resposta
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @NotBlank(message = "Senha é Obrigatória")
     @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres")
@@ -53,4 +54,53 @@ public class Usuario {
     public void aoAtualizar() {
         this.atualizadoEm = LocalDateTime.now();
     }
+
+    // caso o lombok, nao funcione, descomentar abaixo:
+    // public Long getId() {
+    // return id;
+    // }
+
+    // public void setId(Long id) {
+    // this.id = id;
+    // }
+
+    // public String getName() {
+    // return name;
+    // }
+
+    // public void setName(String name) {
+    // this.name = name;
+    // }
+
+    // public String getEmail() {
+    // return email;
+    // }
+
+    // public void setEmail(String email) {
+    // this.email = email;
+    // }
+
+    // public String getPassword() {
+    // return password;
+    // }
+
+    // public void setPassword(String password) {
+    // this.password = password;
+    // }
+
+    // public LocalDateTime getCriadoEm() {
+    // return criadoEm;
+    // }
+
+    // public void setCriadoEm(LocalDateTime criadoEm) {
+    // this.criadoEm = criadoEm;
+    // }
+
+    // public LocalDateTime getAtualizadoEm() {
+    // return atualizadoEm;
+    // }
+
+    // public void setAtualizadoEm(LocalDateTime atualizadoEm) {
+    // this.atualizadoEm = atualizadoEm;
+    // }
 }

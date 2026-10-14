@@ -34,4 +34,53 @@ public class Categoria {
     private String cor; // Código Hexadecimal (ex: #FF5733)
 
     private String icone; // Nome do ícone
+
+    // caso o lombok, nao funcione, descomentar abaixo:
+    // public Long getId() {
+    // return id;
+    // }
+
+    // public void setId(Long id) {
+    // this.id = id;
+    // }
+
+    // public Usuario getUsuario() {
+    // return usuario;
+    // }
+
+    // public void setUsuario(Usuario usuario) {
+    // this.usuario = usuario;
+    // }
+
+    // public String getNome() {
+    // return nome;
+    // }
+
+    // public void setNome(String nome) {
+    // this.nome = nome;
+    // }
+
+    // public TipoTransacao getTipo() {
+    // return tipo;
+    // }
+
+    // public void setTipo(TipoTransacao tipo) {
+    // this.tipo = tipo;
+    // }
+
+    // public String getCor() {
+    // return cor;
+    // }
+
+    // public void setCor(String cor) {
+    // this.cor = cor;
+    // }
+
+    // public String getIcone() {
+    // return icone;
+    // }
+
+    // public void setIcone(String icone) {
+    // this.icone = icone;
+    // }
 }

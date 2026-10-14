@@ -18,7 +18,7 @@ import lombok.Data;
 @Entity
 @Data
 @Table(name = "carteira_membro", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"carteira_id", "usuario_id"})
+        @UniqueConstraint(columnNames = { "carteira_id", "usuario_id" })
 })
 public class CarteiraMembro {
 
@@ -43,4 +43,45 @@ public class CarteiraMembro {
     public void aoCriar() {
         this.entradoEm = LocalDateTime.now();
     }
+
+    // caso o lombok, nao funcione, descomentar abaixo:
+    // public Long getId() {
+    // return id;
+    // }
+
+    // public void setId(Long id) {
+    // this.id = id;
+    // }
+
+    // public Carteira getCarteira() {
+    // return carteira;
+    // }
+
+    // public void setCarteira(Carteira carteira) {
+    // this.carteira = carteira;
+    // }
+
+    // public Usuario getUsuario() {
+    // return usuario;
+    // }
+
+    // public void setUsuario(Usuario usuario) {
+    // this.usuario = usuario;
+    // }
+
+    // public PapelCarteira getPapel() {
+    // return papel;
+    // }
+
+    // public void setPapel(PapelCarteira papel) {
+    // this.papel = papel;
+    // }
+
+    // public LocalDateTime getEntradoEm() {
+    // return entradoEm;
+    // }
+
+    // public void setEntradoEm(LocalDateTime entradoEm) {
+    // this.entradoEm = entradoEm;
+    // }
 }

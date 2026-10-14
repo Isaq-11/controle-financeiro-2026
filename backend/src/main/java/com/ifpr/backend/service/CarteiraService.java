@@ -1,6 +1,7 @@
 package com.ifpr.backend.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,9 @@ public class CarteiraService {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private SseNotificacaoService sseNotificacaoService;
 
     public List<Carteira> buscarTodasDoUsuario(Long usuarioId) {
         return carteiraRepository.findAllByUsuarioId(usuarioId);
@@ -103,7 +107,19 @@ public class CarteiraService {
         novoMembro.setUsuario(usuarioAdicionar);
         novoMembro.setPapel(papel != null ? papel : PapelCarteira.VISUALIZADOR);
 
-        return carteiraMembroRepository.save(novoMembro);
+        CarteiraMembro salvo = carteiraMembroRepository.save(novoMembro);
+
+        Map<String, Object> evento = Map.of(
+            "carteiraId", carteiraId,
+            "acao", "MEMBRO_ADICIONADO",
+            "usuarioId", usuarioAdicionar.getId(),
+            "usuarioNome", usuarioAdicionar.getName() != null ? usuarioAdicionar.getName() : usuarioAdicionar.getEmail(),
+            "papel", salvo.getPapel().name()
+        );
+        sseNotificacaoService.notificarMembrosCarteira(carteiraId, "carteira-alterada", evento);
+        sseNotificacaoService.notificarUsuario(usuarioAdicionar.getId(), "carteira-alterada", evento);
+
+        return salvo;
     }
 
     public CarteiraMembro alterarPapelMembro(Long carteiraId, Long targetUserId, PapelCarteira novoPapel, Usuario usuarioAutenticado) {
@@ -113,7 +129,17 @@ public class CarteiraService {
                 .orElseThrow(() -> new ResourceNotFoundException("Membro não encontrado nesta carteira."));
 
         membro.setPapel(novoPapel);
-        return carteiraMembroRepository.save(membro);
+        CarteiraMembro salvo = carteiraMembroRepository.save(membro);
+
+        Map<String, Object> evento = Map.of(
+            "carteiraId", carteiraId,
+            "acao", "PAPEL_ALTERADO",
+            "usuarioId", targetUserId,
+            "papel", novoPapel.name()
+        );
+        sseNotificacaoService.notificarMembrosCarteira(carteiraId, "carteira-alterada", evento);
+
+        return salvo;
     }
 
     public void removerMembro(Long carteiraId, Long targetUserId, Usuario usuarioAutenticado) {
@@ -123,6 +149,14 @@ public class CarteiraService {
                 .orElseThrow(() -> new ResourceNotFoundException("Membro não encontrado nesta carteira."));
 
         carteiraMembroRepository.delete(membro);
+
+        Map<String, Object> evento = Map.of(
+            "carteiraId", carteiraId,
+            "acao", "MEMBRO_REMOVIDO",
+            "usuarioId", targetUserId
+        );
+        sseNotificacaoService.notificarMembrosCarteira(carteiraId, "carteira-alterada", evento);
+        sseNotificacaoService.notificarUsuario(targetUserId, "carteira-alterada", evento);
     }
 
     // Validações de Permissão

@@ -35,4 +35,45 @@ public class Carteira {
     public void aoCriar() {
         this.criadoEm = LocalDateTime.now();
     }
+
+    // caso o lombok, nao funcione, descomentar abaixo:
+    // public Long getId() {
+    // return id;
+    // }
+
+    // public void setId(Long id) {
+    // this.id = id;
+    // }
+
+    // public Usuario getDono() {
+    // return dono;
+    // }
+
+    // public void setDono(Usuario dono) {
+    // this.dono = dono;
+    // }
+
+    // public String getNome() {
+    // return nome;
+    // }
+
+    // public void setNome(String nome) {
+    // this.nome = nome;
+    // }
+
+    // public String getDescricao() {
+    // return descricao;
+    // }
+
+    // public void setDescricao(String descricao) {
+    // this.descricao = descricao;
+    // }
+
+    // public LocalDateTime getCriadoEm() {
+    // return criadoEm;
+    // }
+
+    // public void setCriadoEm(LocalDateTime criadoEm) {
+    // this.criadoEm = criadoEm;
+    // }
 }

@@ -16,4 +16,20 @@ public class AdicionarMembroDTO {
 
     @NotNull(message = "O papel/permissão é obrigatório (DONO, EDITOR, VISUALIZADOR)")
     private PapelCarteira role;
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public PapelCarteira getRole() {
+        return role;
+    }
+
+    public void setRole(PapelCarteira role) {
+        this.role = role;
+    }
 }

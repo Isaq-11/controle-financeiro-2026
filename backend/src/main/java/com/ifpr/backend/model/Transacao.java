@@ -56,4 +56,77 @@ public class Transacao {
     public void aoCriar() {
         this.criadoEm = LocalDateTime.now();
     }
+
+    // caso o lombok, nao funcione, descomentar abaixo:
+    // public Long getId() {
+    // return id;
+    // }
+
+    // public void setId(Long id) {
+    // this.id = id;
+    // }
+
+    // public Carteira getCarteira() {
+    // return carteira;
+    // }
+
+    // public void setCarteira(Carteira carteira) {
+    // this.carteira = carteira;
+    // }
+
+    // public Categoria getCategoria() {
+    // return categoria;
+    // }
+
+    // public void setCategoria(Categoria categoria) {
+    // this.categoria = categoria;
+    // }
+
+    // public Usuario getCriadoPor() {
+    // return criadoPor;
+    // }
+
+    // public void setCriadoPor(Usuario criadoPor) {
+    // this.criadoPor = criadoPor;
+    // }
+
+    // public TipoTransacao getTipo() {
+    // return tipo;
+    // }
+
+    // public void setTipo(TipoTransacao tipo) {
+    // this.tipo = tipo;
+    // }
+
+    // public BigDecimal getValor() {
+    // return valor;
+    // }
+
+    // public void setValor(BigDecimal valor) {
+    // this.valor = valor;
+    // }
+
+    // public String getDescricao() {
+    // return descricao;
+    // }
+
+    // public void setDescricao(String descricao) {
+    // this.descricao = descricao;
+    // }
+
+    // public LocalDate getData() {
+    // return data;
+    // }
+
+    // public void setData(LocalDate data) {
+    // this.data = data;
+    // }
+
+    // public LocalDateTime getCriadoEm() {
+    // return criadoEm;
+    // }
+
+    // public void setCriadoEm(LocalDateTime criadoEm) {
+    // this.criadoEm = criadoEm;
+    // }
 }

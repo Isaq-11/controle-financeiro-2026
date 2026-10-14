@@ -1,19 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, TrendingUp, TrendingDown, Calendar, Plus, Trash2, X } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Calendar, Plus, Trash2, X, Share2, Users, UserPlus, Shield, Zap, Radio } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import CarteiraService from "@/services/CarteiraService";
 import TransacaoService from "@/services/TransacaoService";
 import CategoriaService from "@/services/CategoriaService";
+import { useAuth } from "@/services/AuthContext";
+import { conectarEventosSse } from "@/services/SseService";
 
 const carteiraService = new CarteiraService();
 const transacaoService = new TransacaoService();
 const categoriaService = new CategoriaService();
 
 const Dashboard = () => {
+    const { usuarioLogado } = useAuth();
+    const navigate = useNavigate();
     const [carregando, setCarregando] = useState(true);
     const [resumo, setResumo] = useState({ saldoAtual: 0, totalReceitas: 0, totalDespesas: 0 });
     const [grafico, setGrafico] = useState([]);
@@ -22,6 +27,15 @@ const Dashboard = () => {
     const [carteiraSelecionada, setCarteiraSelecionada] = useState(null);
     const [categorias, setCategorias] = useState([]);
     const [erroGeral, setErroGeral] = useState("");
+
+    // Estado do SSE (Tempo Real)
+    const [conectadoSse, setConectadoSse] = useState(false);
+    const [notificacaoSse, setNotificacaoSse] = useState(null);
+    const carteiraSelecionadaRef = useRef(null);
+
+    useEffect(() => {
+        carteiraSelecionadaRef.current = carteiraSelecionada;
+    }, [carteiraSelecionada]);
 
     // Estado do Modal de Nova Transação
     const [modalAberto, setModalAberto] = useState(false);
@@ -32,11 +46,50 @@ const Dashboard = () => {
     const [enviando, setEnviando] = useState(false);
     const [mensagemErroModal, setMensagemErroModal] = useState("");
 
+    // Estado do Modal de Nova Carteira
+    const [modalCarteiraAberto, setModalCarteiraAberto] = useState(false);
+    const [nomeNovaCarteira, setNomeNovaCarteira] = useState("");
+    const [descNovaCarteira, setDescNovaCarteira] = useState("");
+    const [enviandoCarteira, setEnviandoCarteira] = useState(false);
+    const [erroModalCarteira, setErroModalCarteira] = useState("");
+
+    // Estado do Modal de Compartilhamento / Membros
+    const [modalMembrosAberto, setModalMembrosAberto] = useState(false);
+    const [membros, setMembros] = useState([]);
+    const [carregandoMembros, setCarregandoMembros] = useState(false);
+    const [novoMembroEmail, setNovoMembroEmail] = useState("");
+    const [novoMembroPapel, setNovoMembroPapel] = useState("EDITOR");
+    const [enviandoMembro, setEnviandoMembro] = useState(false);
+    const [erroMembro, setErroMembro] = useState("");
+    const [sucessoMembro, setSucessoMembro] = useState("");
+
     useEffect(() => {
         carregarDados();
-    }, []);
 
-    const carregarDados = async () => {
+        const token = usuarioLogado?.token || localStorage.getItem("token_usuario");
+        const encerrarSse = conectarEventosSse(token, {
+            onStatus: (status) => setConectadoSse(status),
+            onTransacaoAlterada: (dados) => {
+                if (carteiraSelecionadaRef.current && Number(dados.carteiraId) === Number(carteiraSelecionadaRef.current.id)) {
+                    carregarDadosCarteira(carteiraSelecionadaRef.current.id);
+                }
+                const acaoTexto = dados.acao === "CRIADA" ? "adicionada" : dados.acao === "ATUALIZADA" ? "atualizada" : "removida";
+                const autor = dados.autorNome ? ` por ${dados.autorNome}` : "";
+                const val = dados.valor ? ` (R$ ${Number(dados.valor).toFixed(2).replace(".", ",")})` : "";
+                setNotificacaoSse(`⚡ Transação ${acaoTexto}${autor}: "${dados.descricao || 'Lançamento'}"${val}`);
+                setTimeout(() => setNotificacaoSse(null), 6000);
+            },
+            onCarteiraAlterada: () => {
+                carregarDados(carteiraSelecionadaRef.current?.id);
+                setNotificacaoSse("⚡ Carteira e permissões sincronizadas em tempo real!");
+                setTimeout(() => setNotificacaoSse(null), 5000);
+            }
+        });
+
+        return () => encerrarSse();
+    }, [usuarioLogado?.token]);
+
+    const carregarDados = async (manterCarteiraId = null) => {
         setCarregando(true);
         setErroGeral("");
         try {
@@ -53,10 +106,15 @@ const Dashboard = () => {
             }
 
             if (listaCarteiras.length > 0) {
-                const primeiraCarteira = listaCarteiras[0];
-                setCarteiraSelecionada(primeiraCarteira);
-                await carregarDadosCarteira(primeiraCarteira.id);
+                let carteiraAlvo = listaCarteiras[0];
+                if (manterCarteiraId) {
+                    const achada = listaCarteiras.find(c => c.id === manterCarteiraId);
+                    if (achada) carteiraAlvo = achada;
+                }
+                setCarteiraSelecionada(carteiraAlvo);
+                await carregarDadosCarteira(carteiraAlvo.id);
             } else {
+                setCarteiraSelecionada(null);
                 setLancamentos([]);
                 setResumo({ saldoAtual: 0, totalReceitas: 0, totalDespesas: 0 });
                 setGrafico([]);
@@ -128,6 +186,121 @@ const Dashboard = () => {
         }
     };
 
+    const handleTrocarCarteira = async (walletId) => {
+        const idNum = Number(walletId);
+        const achada = carteiras.find(c => c.id === idNum);
+        if (achada) {
+            setCarteiraSelecionada(achada);
+            await carregarDadosCarteira(achada.id);
+        }
+    };
+
+    // Criar nova Carteira
+    const handleCriarCarteira = async (e) => {
+        e.preventDefault();
+        setErroModalCarteira("");
+        if (!nomeNovaCarteira.trim()) {
+            setErroModalCarteira("Informe o nome da carteira!");
+            return;
+        }
+
+        setEnviandoCarteira(true);
+        try {
+            const resp = await carteiraService.inserir({
+                nome: nomeNovaCarteira,
+                descricao: descNovaCarteira
+            });
+            const nova = resp.data;
+            setNomeNovaCarteira("");
+            setDescNovaCarteira("");
+            setModalCarteiraAberto(false);
+            await carregarDados(nova?.id);
+        } catch (err) {
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || err.message || "Erro ao criar carteira";
+            setErroModalCarteira(msg);
+        } finally {
+            setEnviandoCarteira(false);
+        }
+    };
+
+    // Compartilhamento / Membros
+    const abrirModalMembros = async () => {
+        if (!carteiraSelecionada) return;
+        setModalMembrosAberto(true);
+        setErroMembro("");
+        setSucessoMembro("");
+        await carregarMembros();
+    };
+
+    const carregarMembros = async () => {
+        if (!carteiraSelecionada) return;
+        setCarregandoMembros(true);
+        try {
+            const lista = await carteiraService.listarMembros(carteiraSelecionada.id);
+            setMembros(Array.isArray(lista) ? lista : []);
+        } catch (err) {
+            console.error("Erro ao carregar membros:", err);
+            setErroMembro("Não foi possível carregar a lista de membros.");
+        } finally {
+            setCarregandoMembros(false);
+        }
+    };
+
+    const handleAdicionarMembro = async (e) => {
+        e.preventDefault();
+        setErroMembro("");
+        setSucessoMembro("");
+
+        if (!novoMembroEmail.trim()) {
+            setErroMembro("Informe o e-mail do usuário.");
+            return;
+        }
+
+        setEnviandoMembro(true);
+        try {
+            await carteiraService.adicionarMembro(carteiraSelecionada.id, {
+                email: novoMembroEmail,
+                role: novoMembroPapel
+            });
+            setNovoMembroEmail("");
+            setSucessoMembro("Membro convidado/adicionado com sucesso!");
+            await carregarMembros();
+        } catch (err) {
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || err.message || "Erro ao adicionar membro";
+            setErroMembro(msg);
+        } finally {
+            setEnviandoMembro(false);
+        }
+    };
+
+    const handleAlterarPapel = async (userId, novoPapel) => {
+        setErroMembro("");
+        setSucessoMembro("");
+        try {
+            await carteiraService.alterarPapelMembro(carteiraSelecionada.id, userId, { role: novoPapel });
+            setSucessoMembro("Permissão do membro atualizada!");
+            await carregarMembros();
+        } catch (err) {
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || "Erro ao alterar papel";
+            setErroMembro(msg);
+        }
+    };
+
+    const handleRemoverMembro = async (userId) => {
+        if (!confirm("Deseja remover este membro da carteira?")) return;
+        setErroMembro("");
+        setSucessoMembro("");
+        try {
+            await carteiraService.removerMembro(carteiraSelecionada.id, userId);
+            setSucessoMembro("Membro removido da carteira.");
+            await carregarMembros();
+        } catch (err) {
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || "Erro ao remover membro";
+            setErroMembro(msg);
+        }
+    };
+
+    // Criar Transação
     const handleCriarTransacao = async (e) => {
         e.preventDefault();
         setMensagemErroModal("");
@@ -212,29 +385,72 @@ const Dashboard = () => {
                 </div>
             )}
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-50">Dashboard Financeiro</h1>
-                    <p className="text-slate-300 text-sm">Finanças em tempo real armazenadas no seu Banco de Dados</p>
+            {notificacaoSse && (
+                <div className="p-3.5 rounded-xl bg-indigo-950/90 border border-indigo-500 text-indigo-100 text-sm font-semibold flex items-center justify-between shadow-2xl animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-2.5">
+                        <Zap className="w-5 h-5 text-amber-400 animate-pulse" />
+                        <span>{notificacaoSse}</span>
+                    </div>
+                    <button onClick={() => setNotificacaoSse(null)} className="text-indigo-300 hover:text-white p-1">
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
-                <div className="flex items-center gap-3">
-                    {carteiraSelecionada && (
-                        <div className="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-800">
-                            <Wallet className="w-4 h-4 text-emerald-400" />
-                            <span className="text-xs text-slate-400">Carteira:</span>
-                            <span className="text-sm font-semibold text-slate-100">{carteiraSelecionada.nome}</span>
-                        </div>
-                    )}
+            )}
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold text-slate-50">Dashboard Financeiro</h1>
+                        {conectadoSse ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 border border-emerald-600/70 text-emerald-300">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                Tempo Real: Conectado
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-400">
+                                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                                Tempo Real: Conectando...
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-slate-300 text-sm mt-0.5">Finanças e saldos atualizados ao vivo via Server-Sent Events (SSE)</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Seletor de Carteira */}
+                    <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                        <Wallet className="w-4 h-4 text-emerald-400" />
+                        <select
+                            value={carteiraSelecionada?.id || ""}
+                            onChange={(e) => handleTrocarCarteira(e.target.value)}
+                            className="bg-slate-900 text-slate-100 text-sm font-semibold border-none focus:ring-0 cursor-pointer"
+                        >
+                            {carteiras.map(c => (
+                                <option key={c.id} value={c.id}>
+                                    {c.nome}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <Button
+                        variant="outline"
+                        onClick={() => navigate("/carteiras")}
+                        className="border-slate-700 text-slate-200 hover:bg-slate-800 text-xs font-semibold flex items-center gap-1.5"
+                    >
+                        <Users className="w-3.5 h-3.5 text-emerald-400" /> Carteiras & Membros
+                    </Button>
+
                     <Button
                         onClick={() => setModalAberto(true)}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-2"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5"
                     >
-                        <Plus className="w-4 h-4" /> Nova Transação
+                        <Plus className="w-3.5 h-3.5" /> Nova Transação
                     </Button>
                 </div>
             </div>
 
-            {/* 1. Três Indicadores Numéricos */}
+            {/* 1. Indicadores Numéricos */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="bg-slate-800 border-slate-700">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -277,7 +493,7 @@ const Dashboard = () => {
             <Card className="bg-slate-800 border-slate-700">
                 <CardHeader>
                     <CardTitle className="text-lg text-slate-100">Fluxo de Caixa (Receitas vs Despesas)</CardTitle>
-                    <p className="text-xs text-slate-300">Comparativo visual de Entradas e Saídas registradas no Banco</p>
+                    <p className="text-xs text-slate-300">Comparativo visual de Entradas e Saídas na carteira ativa</p>
                 </CardHeader>
                 <CardContent>
                     <div className="h-64 w-full">
@@ -295,7 +511,7 @@ const Dashboard = () => {
                 </CardContent>
             </Card>
 
-            {/* 3. Tabela de Lançamentos Recentes com exclusão no Banco de Dados */}
+            {/* 3. Tabela de Lançamentos Recentes */}
             <Card className="bg-slate-800 border-slate-700">
                 <CardHeader>
                     <CardTitle className="text-lg text-slate-100">Lançamentos Recentes</CardTitle>
@@ -328,9 +544,8 @@ const Dashboard = () => {
                                                 <Calendar className="w-3 h-3 text-slate-400" />
                                                 {item.data}
                                             </td>
-                                            <td className={`p-3 text-right font-bold ${
-                                                item.tipo === "RECEITA" ? "text-emerald-400" : "text-rose-400"
-                                            }`}>
+                                            <td className={`p-3 text-right font-bold ${item.tipo === "RECEITA" ? "text-emerald-400" : "text-rose-400"
+                                                }`}>
                                                 {item.tipo === "RECEITA" ? "+ " : "- "}
                                                 {formatarDinheiro(item.valor)}
                                             </td>
@@ -376,22 +591,20 @@ const Dashboard = () => {
                                     <button
                                         type="button"
                                         onClick={() => setNovoTipo("RECEITA")}
-                                        className={`py-2 text-xs font-bold rounded-lg border ${
-                                            novoTipo === "RECEITA"
-                                                ? "bg-emerald-950/80 border-emerald-500 text-emerald-300"
-                                                : "bg-slate-900 border-slate-700 text-slate-400"
-                                        }`}
+                                        className={`py-2 text-xs font-bold rounded-lg border ${novoTipo === "RECEITA"
+                                            ? "bg-emerald-950/80 border-emerald-500 text-emerald-300"
+                                            : "bg-slate-900 border-slate-700 text-slate-400"
+                                            }`}
                                     >
                                         + Receita (Entrada)
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setNovoTipo("DESPESA")}
-                                        className={`py-2 text-xs font-bold rounded-lg border ${
-                                            novoTipo === "DESPESA"
-                                                ? "bg-rose-950/80 border-rose-500 text-rose-300"
-                                                : "bg-slate-900 border-slate-700 text-slate-400"
-                                        }`}
+                                        className={`py-2 text-xs font-bold rounded-lg border ${novoTipo === "DESPESA"
+                                            ? "bg-rose-950/80 border-rose-500 text-rose-300"
+                                            : "bg-slate-900 border-slate-700 text-slate-400"
+                                            }`}
                                     >
                                         - Despesa (Saída)
                                     </button>
@@ -459,6 +672,192 @@ const Dashboard = () => {
                                 </Button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Criar Nova Carteira */}
+            {modalCarteiraAberto && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl relative">
+                        <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <Wallet className="w-5 h-5 text-emerald-400" /> Nova Carteira
+                            </h2>
+                            <button onClick={() => setModalCarteiraAberto(false)} className="text-slate-400 hover:text-slate-200">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {erroModalCarteira && (
+                            <div className="p-2.5 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs font-semibold">
+                                {erroModalCarteira}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleCriarCarteira} className="space-y-4">
+                            <div>
+                                <Label htmlFor="nomeCarteira" className="text-slate-300 text-xs font-semibold">Nome da Carteira</Label>
+                                <Input
+                                    id="nomeCarteira"
+                                    type="text"
+                                    value={nomeNovaCarteira}
+                                    onChange={(e) => setNomeNovaCarteira(e.target.value)}
+                                    placeholder="Ex: Carteira Pessoal, Viagem 2026, Projeto Compartilhado"
+                                    className="bg-slate-900 border-slate-700 text-slate-100 text-sm mt-1"
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="descCarteira" className="text-slate-300 text-xs font-semibold">Descrição (Opcional)</Label>
+                                <Input
+                                    id="descCarteira"
+                                    type="text"
+                                    value={descNovaCarteira}
+                                    onChange={(e) => setDescNovaCarteira(e.target.value)}
+                                    placeholder="Ex: Gastos compartilhados com a família"
+                                    className="bg-slate-900 border-slate-700 text-slate-100 text-sm mt-1"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-700">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setModalCarteiraAberto(false)}
+                                    className="border-slate-700 text-slate-300 hover:bg-slate-700"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={enviandoCarteira}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                                >
+                                    {enviandoCarteira ? "Criando Carteira..." : "Criar Carteira"}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Gestão de Membros / Compartilhamento */}
+            {modalMembrosAberto && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-lg space-y-4 shadow-2xl relative">
+                        <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-blue-400" /> Membros da Carteira
+                                </h2>
+                                <p className="text-xs text-slate-400 mt-0.5">{carteiraSelecionada?.nome}</p>
+                            </div>
+                            <button onClick={() => setModalMembrosAberto(false)} className="text-slate-400 hover:text-slate-200">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {erroMembro && (
+                            <div className="p-2.5 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs font-semibold">
+                                {erroMembro}
+                            </div>
+                        )}
+
+                        {sucessoMembro && (
+                            <div className="p-2.5 rounded bg-emerald-950/80 border border-emerald-700 text-emerald-200 text-xs font-semibold">
+                                {sucessoMembro}
+                            </div>
+                        )}
+
+                        {/* Formulário para Adicionar Membro por E-mail */}
+                        <form onSubmit={handleAdicionarMembro} className="bg-slate-900 p-4 rounded-lg border border-slate-700 space-y-3">
+                            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <UserPlus className="w-4 h-4 text-blue-400" /> Convidar / Adicionar Membro
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div className="sm:col-span-2">
+                                    <Input
+                                        type="email"
+                                        value={novoMembroEmail}
+                                        onChange={(e) => setNovoMembroEmail(e.target.value)}
+                                        placeholder="E-mail do usuário cadastrado"
+                                        className="bg-slate-800 border-slate-700 text-slate-100 text-xs"
+                                    />
+                                </div>
+                                <div>
+                                    <select
+                                        value={novoMembroPapel}
+                                        onChange={(e) => setNovoMembroPapel(e.target.value)}
+                                        className="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-md p-2"
+                                    >
+                                        <option value="EDITOR">EDITOR</option>
+                                        <option value="VISUALIZADOR">VISUALIZADOR</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <Button
+                                type="submit"
+                                disabled={enviandoMembro}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
+                            >
+                                {enviandoMembro ? "Adicionando..." : "Adicionar Membro"}
+                            </Button>
+                        </form>
+
+                        {/* Lista de Membros Atuais */}
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Membros Atuais</h3>
+                            {carregandoMembros ? (
+                                <p className="text-xs text-slate-400">Carregando membros...</p>
+                            ) : membros.length === 0 ? (
+                                <p className="text-xs text-slate-500">Nenhum membro encontrado.</p>
+                            ) : (
+                                membros.map((m) => (
+                                    <div key={m.id || m.usuario?.id} className="flex items-center justify-between bg-slate-900/60 p-3 rounded-lg border border-slate-700/60">
+                                        <div className="flex items-center gap-2">
+                                            <Shield className={`w-4 h-4 ${m.papel === "DONO" ? "text-amber-400" : m.papel === "EDITOR" ? "text-emerald-400" : "text-slate-400"
+                                                }`} />
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-100">{m.usuario?.nome || m.usuario?.email}</p>
+                                                <p className="text-[10px] text-slate-400">{m.usuario?.email}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${m.papel === "DONO"
+                                                ? "bg-amber-950/80 border-amber-600 text-amber-300"
+                                                : m.papel === "EDITOR"
+                                                    ? "bg-emerald-950/80 border-emerald-600 text-emerald-300"
+                                                    : "bg-slate-800 border-slate-600 text-slate-300"
+                                                }`}>
+                                                {m.papel}
+                                            </span>
+
+                                            {m.papel !== "DONO" && (
+                                                <div className="flex items-center gap-1">
+                                                    <select
+                                                        value={m.papel}
+                                                        onChange={(e) => handleAlterarPapel(m.usuario.id, e.target.value)}
+                                                        className="bg-slate-800 border border-slate-700 text-slate-200 text-[10px] rounded p-1"
+                                                    >
+                                                        <option value="EDITOR">EDITOR</option>
+                                                        <option value="VISUALIZADOR">VISUALIZADOR</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() => handleRemoverMembro(m.usuario.id)}
+                                                        title="Remover Membro"
+                                                        className="p-1 text-rose-400 hover:text-rose-200 hover:bg-rose-950/60 rounded"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

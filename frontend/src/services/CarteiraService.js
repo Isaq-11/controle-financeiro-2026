@@ -19,6 +19,17 @@ class CarteiraService extends BaseService {
     const resposta = await this.api.post(`${this.endPoint}/${walletId}/members`, dadosMembro);
     return resposta.data;
   }
+
+  async alterarPapelMembro(walletId, targetUserId, dadosMembro) {
+    const resposta = await this.api.patch(`${this.endPoint}/${walletId}/members/${targetUserId}`, dadosMembro);
+    return resposta.data;
+  }
+
+  async removerMembro(walletId, targetUserId) {
+    const resposta = await this.api.delete(`${this.endPoint}/${walletId}/members/${targetUserId}`);
+    return resposta.data;
+  }
 }
 
 export default CarteiraService;
+
