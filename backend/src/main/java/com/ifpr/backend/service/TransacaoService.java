@@ -104,6 +104,7 @@ public class TransacaoService {
         dbTransacao.setValor(transacaoAtualizada.getValor());
         dbTransacao.setDescricao(transacaoAtualizada.getDescricao());
         dbTransacao.setData(transacaoAtualizada.getData());
+        dbTransacao.setAtualizadoPor(usuario);
 
         if (categoriaId != null) {
             Categoria categoria = categoriaRepository.findById(categoriaId)

@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, TrendingUp, TrendingDown, Calendar, Plus, Trash2, X, Share2, Users, UserPlus, Shield, Zap, Radio } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Calendar, Plus, Trash2, X, Share2, Users, UserPlus, Shield, Zap, Radio, Edit2, User } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import CarteiraService from "@/services/CarteiraService";
 import TransacaoService from "@/services/TransacaoService";
@@ -37,8 +37,9 @@ const Dashboard = () => {
         carteiraSelecionadaRef.current = carteiraSelecionada;
     }, [carteiraSelecionada]);
 
-    // Estado do Modal de Nova Transação
+    // Estado do Modal de Transação (Criação / Edição)
     const [modalAberto, setModalAberto] = useState(false);
+    const [transacaoEditando, setTransacaoEditando] = useState(null);
     const [novaDescricao, setNovaDescricao] = useState("");
     const [novoValor, setNovoValor] = useState("");
     const [novoTipo, setNovoTipo] = useState("DESPESA");
@@ -52,6 +53,13 @@ const Dashboard = () => {
     const [descNovaCarteira, setDescNovaCarteira] = useState("");
     const [enviandoCarteira, setEnviandoCarteira] = useState(false);
     const [erroModalCarteira, setErroModalCarteira] = useState("");
+
+    // Estado do Modal de Editar Carteira
+    const [modalEditarCarteira, setModalEditarCarteira] = useState(false);
+    const [editNomeCarteira, setEditNomeCarteira] = useState("");
+    const [editDescCarteira, setEditDescCarteira] = useState("");
+    const [enviandoEditCarteira, setEnviandoEditCarteira] = useState(false);
+    const [erroEditCarteira, setErroEditCarteira] = useState("");
 
     // Estado do Modal de Compartilhamento / Membros
     const [modalMembrosAberto, setModalMembrosAberto] = useState(false);
@@ -177,9 +185,21 @@ const Dashboard = () => {
                         valor: t.valor,
                         tipo: t.tipo,
                         data: dataFormatada,
-                        categoria: t.categoria?.nome || "Geral"
+                        dataOriginal: t.data,
+                        categoria: t.categoria?.nome || "Geral",
+                        categoriaId: t.categoria?.id || "",
+                        criadoPor: t.criadoPor,
+                        atualizadoPor: t.atualizadoPor
                     };
                 }));
+            }
+
+            // Carrega categorias vinculadas a esta carteira específica
+            try {
+                const catsCarteira = await categoriaService.listarPorCarteira(walletId);
+                setCategorias(Array.isArray(catsCarteira) ? catsCarteira : []);
+            } catch (e) {
+                console.log("Categorias da carteira não carregadas:", e);
             }
         } catch (err) {
             console.error("Erro ao carregar transações da carteira:", err);
@@ -220,6 +240,40 @@ const Dashboard = () => {
             setErroModalCarteira(msg);
         } finally {
             setEnviandoCarteira(false);
+        }
+    };
+
+    // Editar Carteira
+    const abrirModalEditarCarteira = (c) => {
+        setEditNomeCarteira(c.nome || "");
+        setEditDescCarteira(c.descricao || "");
+        setErroEditCarteira("");
+        setModalEditarCarteira(true);
+    };
+
+    const handleSalvarEdicaoCarteira = async (e) => {
+        e.preventDefault();
+        setErroEditCarteira("");
+        if (!editNomeCarteira.trim()) {
+            setErroEditCarteira("O nome da carteira é obrigatório.");
+            return;
+        }
+
+        setEnviandoEditCarteira(true);
+        try {
+            await carteiraService.atualizar(carteiraSelecionada.id, {
+                nome: editNomeCarteira.trim(),
+                descricao: editDescCarteira.trim()
+            });
+            setModalEditarCarteira(false);
+            await carregarDados(carteiraSelecionada.id);
+            setNotificacaoSse(`Carteira renomeada para "${editNomeCarteira.trim()}"!`);
+            setTimeout(() => setNotificacaoSse(null), 4000);
+        } catch (err) {
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || "Erro ao editar carteira.";
+            setErroEditCarteira(msg);
+        } finally {
+            setEnviandoEditCarteira(false);
         }
     };
 
@@ -301,6 +355,26 @@ const Dashboard = () => {
     };
 
     // Criar Transação
+    const abrirModalNovaTransacao = () => {
+        setTransacaoEditando(null);
+        setNovaDescricao("");
+        setNovoValor("");
+        setNovoTipo("DESPESA");
+        setCategoriaId("");
+        setMensagemErroModal("");
+        setModalAberto(true);
+    };
+
+    const abrirModalEditarTransacao = (item) => {
+        setTransacaoEditando(item);
+        setNovaDescricao(item.descricao || "");
+        setNovoValor(item.valor ? String(item.valor) : "");
+        setNovoTipo(item.tipo || "DESPESA");
+        setCategoriaId(item.categoriaId || "");
+        setMensagemErroModal("");
+        setModalAberto(true);
+    };
+
     const handleCriarTransacao = async (e) => {
         e.preventDefault();
         setMensagemErroModal("");
@@ -330,17 +404,23 @@ const Dashboard = () => {
             const dataLocalStr = `${ano}-${mes}-${dia}`;
 
             const dto = {
-                descricao: novaDescricao,
+                descricao: novaDescricao.trim(),
                 valor: valorNum,
                 tipo: novoTipo,
-                data: dataLocalStr
+                data: transacaoEditando?.dataOriginal || dataLocalStr
             };
 
-            await transacaoService.criarTransacao(carteiraSelecionada.id, categoriaId || null, dto);
+            if (transacaoEditando) {
+                await transacaoService.atualizarTransacao(carteiraSelecionada.id, transacaoEditando.id, categoriaId || null, dto);
+            } else {
+                await transacaoService.criarTransacao(carteiraSelecionada.id, categoriaId || null, dto);
+            }
+
             await carregarDadosCarteira(carteiraSelecionada.id);
 
             setNovaDescricao("");
             setNovoValor("");
+            setTransacaoEditando(null);
             setModalAberto(false);
         } catch (err) {
             const msg = err.response?.data?.mensagem || err.response?.data?.message || err.message || "Erro ao salvar transação!";
@@ -418,7 +498,7 @@ const Dashboard = () => {
 
                 <div className="flex flex-wrap items-center gap-2">
                     {/* Seletor de Carteira */}
-                    <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <div className="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
                         <Wallet className="w-4 h-4 text-emerald-400" />
                         <select
                             value={carteiraSelecionada?.id || ""}
@@ -431,6 +511,15 @@ const Dashboard = () => {
                                 </option>
                             ))}
                         </select>
+                        {carteiraSelecionada?.dono?.id === usuarioLogado?.id && (
+                            <button
+                                onClick={() => abrirModalEditarCarteira(carteiraSelecionada)}
+                                title="Editar nome desta carteira"
+                                className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors ml-1"
+                            >
+                                <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                     </div>
 
                     <Button
@@ -442,7 +531,7 @@ const Dashboard = () => {
                     </Button>
 
                     <Button
-                        onClick={() => setModalAberto(true)}
+                        onClick={abrirModalNovaTransacao}
                         className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5"
                     >
                         <Plus className="w-3.5 h-3.5" /> Nova Transação
@@ -523,43 +612,77 @@ const Dashboard = () => {
                                 <tr>
                                     <th className="p-3">Descrição</th>
                                     <th className="p-3">Categoria</th>
+                                    <th className="p-3">Responsável</th>
                                     <th className="p-3">Data</th>
-                                    <th className="p-3 text-right">Valor</th>
+                                    <th className="p-3 text-center">Valor</th>
                                     <th className="p-3 text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-700">
                                 {lancamentos.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="p-4 text-center text-slate-400">
+                                        <td colSpan="6" className="p-4 text-center text-slate-400">
                                             Nenhuma transação cadastrada nesta carteira. Clique em "+ Nova Transação" para adicionar.
                                         </td>
                                     </tr>
                                 ) : (
-                                    lancamentos.map((item) => (
-                                        <tr key={item.id} className="hover:bg-slate-700/50">
-                                            <td className="p-3 font-semibold text-slate-100">{item.descricao}</td>
-                                            <td className="p-3 text-slate-300">{item.categoria}</td>
-                                            <td className="p-3 text-slate-300 flex items-center gap-1">
-                                                <Calendar className="w-3 h-3 text-slate-400" />
-                                                {item.data}
-                                            </td>
-                                            <td className={`p-3 text-right font-bold ${item.tipo === "RECEITA" ? "text-emerald-400" : "text-rose-400"
-                                                }`}>
-                                                {item.tipo === "RECEITA" ? "+ " : "- "}
-                                                {formatarDinheiro(item.valor)}
-                                            </td>
-                                            <td className="p-3 text-center">
-                                                <button
-                                                    onClick={() => handleExcluirTransacao(item.id)}
-                                                    title="Excluir Transação"
-                                                    className="p-1.5 rounded hover:bg-rose-950/80 text-rose-400 hover:text-rose-200 transition-colors"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    lancamentos.map((item) => {
+                                        const souCriador = item.criadoPor?.id === usuarioLogado?.id;
+                                        const nomeCriador = item.criadoPor?.name || item.criadoPor?.email || "Membro";
+                                        const teveEdicao = item.atualizadoPor && item.atualizadoPor?.id !== item.criadoPor?.id;
+                                        const nomeEditor = item.atualizadoPor?.id === usuarioLogado?.id ? "Você" : (item.atualizadoPor?.name || item.atualizadoPor?.email);
+
+                                        return (
+                                            <tr key={item.id} className="hover:bg-slate-700/50">
+                                                <td className="p-3 font-semibold text-slate-100">{item.descricao}</td>
+                                                <td className="p-3 text-slate-300">{item.categoria}</td>
+                                                <td className="p-3">
+                                                    <div className="flex flex-col">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold w-max border ${souCriador
+                                                            ? "bg-emerald-950/80 border-emerald-600/70 text-emerald-300"
+                                                            : "bg-blue-950/80 border-blue-600/70 text-blue-300"
+                                                            }`}>
+                                                            <User className="w-3 h-3" />
+                                                            {souCriador ? "Você" : nomeCriador}
+                                                        </span>
+                                                        {teveEdicao && (
+                                                            <span className="text-[10px] text-slate-400 mt-0.5" title={`Última alteração por ${nomeEditor}`}>
+                                                                Editado por {nomeEditor}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="p-3 text-slate-300">
+                                                    <div className="flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3 text-slate-400" />
+                                                        {item.data}
+                                                    </div>
+                                                </td>
+                                                <td className={`p-3 text-center font-bold ${item.tipo === "RECEITA" ? "text-emerald-400" : "text-rose-400"}`}>
+                                                    {item.tipo === "RECEITA" ? "+ " : "- "}
+                                                    {formatarDinheiro(item.valor)}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <button
+                                                            onClick={() => abrirModalEditarTransacao(item)}
+                                                            title="Editar Transação"
+                                                            className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-100 transition-colors"
+                                                        >
+                                                            <Edit2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleExcluirTransacao(item.id)}
+                                                            title="Excluir Transação"
+                                                            className="p-1.5 rounded hover:bg-rose-950/80 text-rose-400 hover:text-rose-200 transition-colors"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -572,7 +695,15 @@ const Dashboard = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
                     <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl relative">
                         <div className="flex items-center justify-between border-b border-slate-700 pb-3">
-                            <h2 className="text-lg font-bold text-slate-100">Nova Transação</h2>
+                            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                {transacaoEditando ? (
+                                    <>
+                                        <Edit2 className="w-5 h-5 text-amber-400" /> Editar Transação
+                                    </>
+                                ) : (
+                                    "Nova Transação"
+                                )}
+                            </h2>
                             <button onClick={() => setModalAberto(false)} className="text-slate-400 hover:text-slate-200">
                                 <X className="w-5 h-5" />
                             </button>
@@ -645,11 +776,13 @@ const Dashboard = () => {
                                         className="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-lg p-2.5 mt-1"
                                     >
                                         <option value="">Selecione uma categoria...</option>
-                                        {categorias.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.nome} ({c.tipo})
-                                            </option>
-                                        ))}
+                                        {categorias
+                                            .filter((c) => !c.tipo || c.tipo === novoTipo)
+                                            .map((c) => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.nome}
+                                                </option>
+                                            ))}
                                     </select>
                                 </div>
                             )}
@@ -668,7 +801,9 @@ const Dashboard = () => {
                                     disabled={enviando}
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                                 >
-                                    {enviando ? "Salvando no Banco..." : "Salvar Transação"}
+                                    {enviando
+                                        ? "Salvando no Banco..."
+                                        : (transacaoEditando ? "Salvar Alterações" : "Salvar Transação")}
                                 </Button>
                             </div>
                         </form>
@@ -735,6 +870,73 @@ const Dashboard = () => {
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                                 >
                                     {enviandoCarteira ? "Criando Carteira..." : "Criar Carteira"}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Editar Carteira */}
+            {modalEditarCarteira && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl relative">
+                        <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <Edit2 className="w-5 h-5 text-amber-400" /> Editar Carteira
+                            </h2>
+                            <button onClick={() => setModalEditarCarteira(false)} className="text-slate-400 hover:text-slate-200">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {erroEditCarteira && (
+                            <div className="p-2.5 rounded bg-rose-950/80 border border-rose-700 text-rose-200 text-xs font-semibold">
+                                {erroEditCarteira}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSalvarEdicaoCarteira} className="space-y-4">
+                            <div>
+                                <Label htmlFor="editNomeCarteira" className="text-slate-300 text-xs font-semibold">Nome da Carteira</Label>
+                                <Input
+                                    id="editNomeCarteira"
+                                    type="text"
+                                    value={editNomeCarteira}
+                                    onChange={(e) => setEditNomeCarteira(e.target.value)}
+                                    placeholder="Ex: Carteira de João, Viagem de Férias"
+                                    className="bg-slate-900 border-slate-700 text-slate-100 text-sm mt-1"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="editDescCarteira" className="text-slate-300 text-xs font-semibold">Descrição (Opcional)</Label>
+                                <Input
+                                    id="editDescCarteira"
+                                    type="text"
+                                    value={editDescCarteira}
+                                    onChange={(e) => setEditDescCarteira(e.target.value)}
+                                    placeholder="Ex: Carteira de uso diário"
+                                    className="bg-slate-900 border-slate-700 text-slate-100 text-sm mt-1"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-700">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setModalEditarCarteira(false)}
+                                    className="border-slate-700 text-slate-300 hover:bg-slate-700"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={enviandoEditCarteira}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                                >
+                                    {enviandoEditCarteira ? "Salvando..." : "Salvar Alterações"}
                                 </Button>
                             </div>
                         </form>

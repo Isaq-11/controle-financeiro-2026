@@ -60,9 +60,12 @@ public class AuthService {
         // Criar categorias padrão para o novo usuário
         categoriaService.criarCategoriasPadrao(usuarioSalvo);
 
-        // Criar carteira padrão para o novo usuário
+        // Criar carteira padrão para o novo usuário com o nome do usuário
+        String nomeUsuario = usuarioSalvo.getName();
+        String nomeCarteira = "Carteira de " + (nomeUsuario != null && !nomeUsuario.trim().isEmpty() ? nomeUsuario.trim() : "Usuário");
+
         Carteira carteiraPadrao = new Carteira();
-        carteiraPadrao.setNome("Minha Carteira Principal");
+        carteiraPadrao.setNome(nomeCarteira);
         carteiraPadrao.setDescricao("Carteira criada automaticamente no cadastro.");
         Carteira carteiraSalva = carteiraService.criarCarteira(carteiraPadrao, usuarioSalvo);
 

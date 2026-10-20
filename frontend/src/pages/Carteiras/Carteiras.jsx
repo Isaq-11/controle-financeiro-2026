@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, Users, UserPlus, Shield, Trash2, Plus, X, Check, RefreshCw } from "lucide-react";
+import { Wallet, Users, UserPlus, Shield, Trash2, Plus, X, Check, RefreshCw, Edit2 } from "lucide-react";
 import CarteiraService from "@/services/CarteiraService";
 import { useAuth } from "@/services/AuthContext";
 import { conectarEventosSse } from "@/services/SseService";
@@ -22,6 +22,14 @@ const Carteiras = () => {
     const [nomeCarteira, setNomeCarteira] = useState("");
     const [descCarteira, setDescCarteira] = useState("");
     const [enviandoNova, setEnviandoNova] = useState(false);
+
+    // Modal Editar Carteira
+    const [modalEditarCarteira, setModalEditarCarteira] = useState(false);
+    const [carteiraEditando, setCarteiraEditando] = useState(null);
+    const [editNomeCarteira, setEditNomeCarteira] = useState("");
+    const [editDescCarteira, setEditDescCarteira] = useState("");
+    const [enviandoEdit, setEnviandoEdit] = useState(false);
+    const [erroEdit, setErroEdit] = useState("");
 
     // Gestão de Membros de uma Carteira Selecionada
     const [carteiraAtiva, setCarteiraAtiva] = useState(null);
@@ -116,6 +124,40 @@ const Carteiras = () => {
             setErro(msg);
         } finally {
             setEnviandoNova(false);
+        }
+    };
+
+    const abrirModalEditarCarteira = (c) => {
+        setCarteiraEditando(c);
+        setEditNomeCarteira(c.nome || "");
+        setEditDescCarteira(c.descricao || "");
+        setErroEdit("");
+        setModalEditarCarteira(true);
+    };
+
+    const handleEditarCarteira = async (e) => {
+        e.preventDefault();
+        setErroEdit("");
+        if (!editNomeCarteira.trim()) {
+            setErroEdit("O nome da carteira é obrigatório.");
+            return;
+        }
+
+        setEnviandoEdit(true);
+        try {
+            await carteiraService.atualizar(carteiraEditando.id, {
+                nome: editNomeCarteira.trim(),
+                descricao: editDescCarteira.trim()
+            });
+            setSucesso(`Carteira "${editNomeCarteira.trim()}" atualizada com sucesso!`);
+            setModalEditarCarteira(false);
+            await carregarCarteiras();
+            setTimeout(() => setSucesso(""), 4000);
+        } catch (err) {
+            const msg = err.response?.data?.mensagem || err.response?.data?.message || err.message || "Erro ao atualizar carteira.";
+            setErroEdit(msg);
+        } finally {
+            setEnviandoEdit(false);
         }
     };
 
@@ -250,12 +292,27 @@ const Carteiras = () => {
                                                     {c.descricao || "Sem descrição"}
                                                 </p>
                                             </div>
-                                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${souDono
-                                                ? "bg-amber-950/80 border-amber-600 text-amber-300"
-                                                : "bg-blue-950/80 border-blue-600 text-blue-300"
-                                                }`}>
-                                                {souDono ? "DONO" : "COMPARTILHADA"}
-                                            </span>
+                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                {souDono && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            abrirModalEditarCarteira(c);
+                                                        }}
+                                                        title="Editar nome ou descrição da carteira"
+                                                        className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                                                    >
+                                                        <Edit2 className="w-3.5 h-3.5 text-slate-300" />
+                                                    </button>
+                                                )}
+                                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${souDono
+                                                    ? "bg-amber-950/80 border-amber-600 text-amber-300"
+                                                    : "bg-blue-950/80 border-blue-600 text-blue-300"
+                                                    }`}>
+                                                    {souDono ? "DONO" : "COMPARTILHADA"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -279,16 +336,29 @@ const Carteiras = () => {
                                         </p>
                                     </div>
 
-                                    <div className="text-xs">
-                                        {souDonoDaCarteiraAtiva() ? (
-                                            <span className="bg-emerald-950/80 border border-emerald-600 text-emerald-300 px-2.5 py-1 rounded font-semibold">
-                                                Você pode gerenciar permissões
-                                            </span>
-                                        ) : (
-                                            <span className="bg-slate-900 border border-slate-700 text-slate-400 px-2.5 py-1 rounded">
-                                                Apenas o Dono pode adicionar/remover
-                                            </span>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {souDonoDaCarteiraAtiva() && (
+                                            <Button
+                                                onClick={() => abrirModalEditarCarteira(carteiraAtiva)}
+                                                variant="outline"
+                                                className="border-slate-700 bg-slate-900/80 hover:bg-slate-700 text-slate-200 text-xs flex items-center gap-1.5 h-8 px-2.5 font-bold"
+                                                title="Editar nome ou descrição"
+                                            >
+                                                <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                                                Editar Carteira
+                                            </Button>
                                         )}
+                                        <div className="text-xs">
+                                            {souDonoDaCarteiraAtiva() ? (
+                                                <span className="bg-emerald-950/80 border border-emerald-600 text-emerald-300 px-2.5 py-1 rounded font-semibold">
+                                                    Você pode gerenciar permissões
+                                                </span>
+                                            ) : (
+                                                <span className="bg-slate-900 border border-slate-700 text-slate-400 px-2.5 py-1 rounded">
+                                                    Apenas o Dono pode adicionar/remover
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </CardHeader>
@@ -471,6 +541,81 @@ const Carteiras = () => {
                                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                                 >
                                     {enviandoNova ? "Criando..." : "Criar Carteira"}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Editar Carteira */}
+            {modalEditarCarteira && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+                        <button
+                            onClick={() => setModalEditarCarteira(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="p-2 bg-amber-950/60 border border-amber-600/50 rounded-lg text-amber-400">
+                                <Edit2 className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-100">Editar Carteira</h3>
+                                <p className="text-xs text-slate-400">Atualize o nome e a descrição da sua carteira</p>
+                            </div>
+                        </div>
+
+                        {erroEdit && (
+                            <div className="mb-4 p-3 rounded-lg bg-rose-950/80 border border-rose-700 text-rose-200 text-xs font-semibold">
+                                {erroEdit}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleEditarCarteira} className="space-y-4">
+                            <div>
+                                <Label htmlFor="editNome" className="text-xs font-semibold text-slate-300">Nome da Carteira</Label>
+                                <Input
+                                    id="editNome"
+                                    type="text"
+                                    value={editNomeCarteira}
+                                    onChange={(e) => setEditNomeCarteira(e.target.value)}
+                                    placeholder="Ex: Carteira de João, Viagem de Férias"
+                                    className="bg-slate-950 border-slate-700 text-slate-100 mt-1"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="editDesc" className="text-xs font-semibold text-slate-300">Descrição (Opcional)</Label>
+                                <Input
+                                    id="editDesc"
+                                    type="text"
+                                    value={editDescCarteira}
+                                    onChange={(e) => setEditDescCarteira(e.target.value)}
+                                    placeholder="Ex: Finanças pessoais do mês"
+                                    className="bg-slate-950 border-slate-700 text-slate-100 mt-1"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setModalEditarCarteira(false)}
+                                    className="border-slate-700 text-slate-300 text-xs"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={enviandoEdit}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                                >
+                                    {enviandoEdit ? "Salvando..." : "Salvar Alterações"}
                                 </Button>
                             </div>
                         </form>

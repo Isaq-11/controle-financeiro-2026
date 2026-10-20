@@ -24,6 +24,10 @@ public class Categoria {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @ManyToOne
+    @JoinColumn(name = "carteira_id", nullable = true)
+    private Carteira carteira;
+
     @NotBlank(message = "O nome da categoria é obrigatório")
     private String nome;
 
@@ -50,6 +54,14 @@ public class Categoria {
 
     // public void setUsuario(Usuario usuario) {
     // this.usuario = usuario;
+    // }
+
+    // public Carteira getCarteira() {
+    // return carteira;
+    // }
+
+    // public void setCarteira(Carteira carteira) {
+    // this.carteira = carteira;
     // }
 
     // public String getNome() {

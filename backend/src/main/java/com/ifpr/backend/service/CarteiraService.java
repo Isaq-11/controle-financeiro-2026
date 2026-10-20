@@ -31,6 +31,9 @@ public class CarteiraService {
     @Autowired
     private SseNotificacaoService sseNotificacaoService;
 
+    @Autowired
+    private CategoriaService categoriaService;
+
     public List<Carteira> buscarTodasDoUsuario(Long usuarioId) {
         return carteiraRepository.findAllByUsuarioId(usuarioId);
     }
@@ -54,6 +57,13 @@ public class CarteiraService {
         membroDono.setPapel(PapelCarteira.DONO);
         carteiraMembroRepository.save(membroDono);
 
+        // Inicializa as categorias padrão para esta carteira
+        try {
+            categoriaService.criarCategoriasPadraoParaCarteira(carteiraSalva, dono);
+        } catch (Exception e) {
+            // Log/ignora se já existirem
+        }
+
         return carteiraSalva;
     }
 
@@ -66,7 +76,16 @@ public class CarteiraService {
         dbCarteira.setNome(carteiraAtualizada.getNome());
         dbCarteira.setDescricao(carteiraAtualizada.getDescricao());
 
-        return carteiraRepository.save(dbCarteira);
+        Carteira salva = carteiraRepository.save(dbCarteira);
+
+        Map<String, Object> evento = Map.of(
+            "carteiraId", id,
+            "acao", "CARTEIRA_ATUALIZADA",
+            "nome", salva.getNome()
+        );
+        sseNotificacaoService.notificarMembrosCarteira(id, "carteira-alterada", evento);
+
+        return salva;
     }
 
     public void excluir(Long id, Usuario usuarioAutenticado) {

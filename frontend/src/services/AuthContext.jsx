@@ -8,13 +8,16 @@ export const AuthProvider = ({ children }) => {
     const [carregando, setCarregando] = useState(true);
 
     useEffect(() => {
-        const tokenSalvo = localStorage.getItem("token_usuario");
-        const usuarioSalvo = localStorage.getItem("dados_usuario");
+        // Prioriza sessionStorage da aba atual para suportar múltiplas abas com contas diferentes
+        const tokenSalvo = sessionStorage.getItem("token_usuario") || localStorage.getItem("token_usuario");
+        const usuarioSalvo = sessionStorage.getItem("dados_usuario") || localStorage.getItem("dados_usuario");
 
         if (tokenSalvo && usuarioSalvo) {
             try {
                 setUsuarioLogado(JSON.parse(usuarioSalvo));
             } catch {
+                sessionStorage.removeItem("dados_usuario");
+                sessionStorage.removeItem("token_usuario");
                 localStorage.removeItem("dados_usuario");
                 localStorage.removeItem("token_usuario");
             }
@@ -43,6 +46,8 @@ export const AuthProvider = ({ children }) => {
                 token: token
             };
 
+            sessionStorage.setItem("token_usuario", token);
+            sessionStorage.setItem("dados_usuario", JSON.stringify(dadosUsuario));
             localStorage.setItem("token_usuario", token);
             localStorage.setItem("dados_usuario", JSON.stringify(dadosUsuario));
             setUsuarioLogado(dadosUsuario);
@@ -84,6 +89,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     const realizarLogout = () => {
+        sessionStorage.removeItem("token_usuario");
+        sessionStorage.removeItem("dados_usuario");
         localStorage.removeItem("token_usuario");
         localStorage.removeItem("dados_usuario");
         setUsuarioLogado(null);

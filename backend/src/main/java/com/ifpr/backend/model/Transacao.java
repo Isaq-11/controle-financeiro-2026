@@ -37,6 +37,10 @@ public class Transacao {
     @JoinColumn(name = "criado_por_id", nullable = false)
     private Usuario criadoPor;
 
+    @ManyToOne
+    @JoinColumn(name = "atualizado_por_id", nullable = true)
+    private Usuario atualizadoPor;
+
     @NotNull(message = "O tipo da transação é obrigatório")
     @Enumerated(EnumType.STRING)
     private TipoTransacao tipo;

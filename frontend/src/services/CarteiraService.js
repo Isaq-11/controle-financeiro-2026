@@ -10,6 +10,11 @@ class CarteiraService extends BaseService {
     return resposta.data;
   }
 
+  async atualizar(id, dados) {
+    const resposta = await this.api.put(`${this.endPoint}/${id}`, dados);
+    return resposta.data;
+  }
+
   async listarMembros(walletId) {
     const resposta = await this.api.get(`${this.endPoint}/${walletId}/members`);
     return resposta.data;

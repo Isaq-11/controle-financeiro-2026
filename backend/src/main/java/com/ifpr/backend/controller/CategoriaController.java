@@ -54,20 +54,30 @@ public class CategoriaController {
 
     @GetMapping
     public ResponseEntity<List<Categoria>> listar(
+            @RequestParam(name = "walletId", required = false) Long walletId,
             @RequestParam(name = "type", required = false) TipoTransacao tipo,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         Usuario usuario = extrairUsuarioDoHeader(authHeader);
+        if (walletId != null) {
+            return ResponseEntity.ok(categoriaService.buscarPorCarteira(walletId, tipo, usuario));
+        }
         return ResponseEntity.ok(categoriaService.buscarPorUsuario(usuario.getId(), tipo));
     }
 
     @PostMapping
     public ResponseEntity<Categoria> criar(
+            @RequestParam(name = "walletId", required = false) Long walletId,
             @RequestBody @Valid Categoria categoria,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         Usuario usuario = extrairUsuarioDoHeader(authHeader);
-        Categoria novaCategoria = categoriaService.salvar(categoria, usuario);
+        Categoria novaCategoria;
+        if (walletId != null) {
+            novaCategoria = categoriaService.salvarParaCarteira(walletId, categoria, usuario);
+        } else {
+            novaCategoria = categoriaService.salvar(categoria, usuario);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(novaCategoria);
     }
 

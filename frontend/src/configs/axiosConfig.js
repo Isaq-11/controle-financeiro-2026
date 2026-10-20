@@ -9,8 +9,9 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token_usuario') || localStorage.getItem('app-token');
-    const usuario = JSON.parse(localStorage.getItem('dados_usuario') || localStorage.getItem('usuario') || 'null');
+    // Prioriza sessionStorage para permitir sessões independentes por aba do navegador
+    const token = sessionStorage.getItem('token_usuario') || localStorage.getItem('token_usuario') || localStorage.getItem('app-token');
+    const usuario = JSON.parse(sessionStorage.getItem('dados_usuario') || localStorage.getItem('dados_usuario') || localStorage.getItem('usuario') || 'null');
     const tokenUsuario = usuario?.token;
     const tokenFinal = token || tokenUsuario;
 
