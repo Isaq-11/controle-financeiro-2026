@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import Carteiras from "./pages/Carteiras/Carteiras";
 import Categorias from "./pages/Categorias/Categorias";
 import AlteracaoSenha from "./pages/Perfil/AlteracaoSenha";
+import Relatorios from "./pages/Relatorios/Relatorios";
 
 createRoot(document.getElementById("root")).render(
     <StrictMode>
@@ -37,6 +38,7 @@ createRoot(document.getElementById("root")).render(
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/carteiras" element={<Carteiras />} />
                             <Route path="/categorias" element={<Categorias />} />
+                            <Route path="/relatorios" element={<Relatorios />} />
                             <Route path="/app/perfil/senha" element={<AlteracaoSenha />} />
                         </Route>
                     </Route>

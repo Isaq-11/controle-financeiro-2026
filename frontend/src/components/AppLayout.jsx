@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/services/AuthContext";
-import { LayoutDashboard, KeyRound, LogOut, Wallet, Menu, X, Users, Tag } from "lucide-react";
+import { LayoutDashboard, KeyRound, LogOut, Wallet, Menu, X, Users, Tag, BarChart3 } from "lucide-react";
 
 // Layout base com menu lateral (Sidebar) e topo para o estudante entender
 const AppLayout = () => {
@@ -57,6 +57,11 @@ const AppLayout = () => {
                         <NavLink to="/categorias" onClick={() => setMenuMobileAberto(false)} className={obterClasseLink}>
                             <Tag className="w-4 h-4 text-amber-400" />
                             <span>Categorias</span>
+                        </NavLink>
+
+                        <NavLink to="/relatorios" onClick={() => setMenuMobileAberto(false)} className={obterClasseLink}>
+                            <BarChart3 className="w-4 h-4 text-cyan-400" />
+                            <span>Relatórios</span>
                         </NavLink>
 
                         <NavLink to="/app/perfil/senha" onClick={() => setMenuMobileAberto(false)} className={obterClasseLink}>

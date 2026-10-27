@@ -26,6 +26,11 @@ class TransacaoService extends BaseService {
     const resposta = await this.api.delete(`${this.endPoint}/${walletId}/transactions/${id}`);
     return resposta.data;
   }
+
+  async obterRelatorio(walletId, params = {}) {
+    const resposta = await this.api.get(`${this.endPoint}/${walletId}/reports`, { params });
+    return resposta.data;
+  }
 }
 
 export default TransacaoService;

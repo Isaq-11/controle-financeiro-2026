@@ -37,6 +37,22 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 
+    // Buscar transações com filtros completos para relatórios (ordenadas por data descendente)
+    @Query("SELECT t FROM Transacao t WHERE t.carteira.id = :carteiraId " +
+           "AND (:tipo IS NULL OR t.tipo = :tipo) " +
+           "AND (:categoriaId IS NULL OR t.categoria.id = :categoriaId) " +
+           "AND (:memberId IS NULL OR t.criadoPor.id = :memberId) " +
+           "AND (:startDate IS NULL OR t.data >= :startDate) " +
+           "AND (:endDate IS NULL OR t.data <= :endDate) " +
+           "ORDER BY t.data DESC, t.id DESC")
+    List<Transacao> findParaRelatorio(
+            @Param("carteiraId") Long carteiraId,
+            @Param("tipo") TipoTransacao tipo,
+            @Param("categoriaId") Long categoriaId,
+            @Param("memberId") Long memberId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
     // Verificar se existe alguma transação vinculada a uma determinada categoria
     boolean existsByCategoriaId(Long categoriaId);
 }

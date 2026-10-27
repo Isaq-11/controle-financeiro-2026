@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ifpr.backend.dto.RelatorioFinanceiroDTO;
 import com.ifpr.backend.dto.ResumoFinanceiroDTO;
 import com.ifpr.backend.exception.BusinessException;
 import com.ifpr.backend.model.TipoTransacao;
@@ -144,5 +145,22 @@ public class TransacaoController {
         Usuario usuario = extrairUsuarioDoHeader(authHeader);
         ResumoFinanceiroDTO resumo = transacaoService.calcularResumo(walletId, startDate, endDate, usuario);
         return ResponseEntity.ok(resumo);
+    }
+
+    // Relatório Financeiro Completo com Extrato e Indicadores (GET /api/v1/wallets/{walletId}/reports)
+    @GetMapping("/reports")
+    public ResponseEntity<RelatorioFinanceiroDTO> obterRelatorio(
+            @PathVariable("walletId") Long walletId,
+            @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(name = "type", required = false) TipoTransacao tipo,
+            @RequestParam(name = "categoryId", required = false) Long categoryId,
+            @RequestParam(name = "memberId", required = false) Long memberId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        Usuario usuario = extrairUsuarioDoHeader(authHeader);
+        RelatorioFinanceiroDTO relatorio = transacaoService.gerarRelatorioFinanceiro(
+                walletId, startDate, endDate, tipo, categoryId, memberId, usuario);
+        return ResponseEntity.ok(relatorio);
     }
 }
