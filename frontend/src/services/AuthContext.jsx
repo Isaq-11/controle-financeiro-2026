@@ -3,24 +3,33 @@ import api from "../configs/axiosConfig";
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-    const [usuarioLogado, setUsuarioLogado] = useState(null);
-    const [carregando, setCarregando] = useState(true);
-
-    useEffect(() => {
-        // Prioriza sessionStorage da aba atual para suportar múltiplas abas com contas diferentes
+// Recupera a sessão sincronicamente no boot para evitar redirecionamentos indesejados no F5/refresh
+const obterSessaoSalva = () => {
+    try {
         const tokenSalvo = sessionStorage.getItem("token_usuario") || localStorage.getItem("token_usuario");
         const usuarioSalvo = sessionStorage.getItem("dados_usuario") || localStorage.getItem("dados_usuario");
 
         if (tokenSalvo && usuarioSalvo) {
-            try {
-                setUsuarioLogado(JSON.parse(usuarioSalvo));
-            } catch {
-                sessionStorage.removeItem("dados_usuario");
-                sessionStorage.removeItem("token_usuario");
-                localStorage.removeItem("dados_usuario");
-                localStorage.removeItem("token_usuario");
-            }
+            return JSON.parse(usuarioSalvo);
+        }
+    } catch {
+        sessionStorage.removeItem("dados_usuario");
+        sessionStorage.removeItem("token_usuario");
+        localStorage.removeItem("dados_usuario");
+        localStorage.removeItem("token_usuario");
+    }
+    return null;
+};
+
+export const AuthProvider = ({ children }) => {
+    const [usuarioLogado, setUsuarioLogado] = useState(obterSessaoSalva);
+    const [carregando, setCarregando] = useState(false);
+
+    useEffect(() => {
+        // Valida se a sessão no storage ainda é válida
+        const sessao = obterSessaoSalva();
+        if (sessao && !usuarioLogado) {
+            setUsuarioLogado(sessao);
         }
         setCarregando(false);
     }, []);
@@ -101,6 +110,7 @@ export const AuthProvider = ({ children }) => {
             value={{
                 usuarioLogado,
                 carregando,
+                carregandoInicial: carregando,
                 realizarLogin,
                 realizarCadastro,
                 alterarSenhaAtual,

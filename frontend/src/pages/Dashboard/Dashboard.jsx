@@ -11,6 +11,7 @@ import TransacaoService from "@/services/TransacaoService";
 import CategoriaService from "@/services/CategoriaService";
 import { useAuth } from "@/services/AuthContext";
 import { conectarEventosSse } from "@/services/SseService";
+import AiInsightsCard from "@/components/AiInsightsCard";
 
 const carteiraService = new CarteiraService();
 const transacaoService = new TransacaoService();
@@ -101,17 +102,18 @@ const Dashboard = () => {
         setCarregando(true);
         setErroGeral("");
         try {
-            const respCarteiras = await carteiraService.buscarTodos();
+            // Busca carteiras e categorias simultaneamente em paralelo
+            const [respCarteiras, respCats] = await Promise.all([
+                carteiraService.buscarTodos(),
+                categoriaService.buscarTodos().catch((e) => {
+                    console.log("Categorias não carregadas:", e);
+                    return { data: [] };
+                })
+            ]);
+
             const listaCarteiras = respCarteiras.data || [];
             setCarteiras(listaCarteiras);
-
-            // Carrega categorias do usuário do backend
-            try {
-                const respCats = await categoriaService.buscarTodos();
-                setCategorias(respCats.data || []);
-            } catch (e) {
-                console.log("Categorias não carregadas:", e);
-            }
+            setCategorias(respCats?.data || []);
 
             if (listaCarteiras.length > 0) {
                 let carteiraAlvo = listaCarteiras[0];
@@ -137,7 +139,18 @@ const Dashboard = () => {
 
     const carregarDadosCarteira = async (walletId) => {
         try {
-            const resumoApi = await carteiraService.obterResumo(walletId);
+            // Executa busca do resumo financeiro e transações em paralelo
+            const [resumoApi, transacoesApi] = await Promise.all([
+                carteiraService.obterResumo(walletId).catch((e) => {
+                    console.warn("Erro ao carregar resumo da carteira:", e);
+                    return null;
+                }),
+                transacaoService.listarTransacoes(walletId).catch((e) => {
+                    console.warn("Erro ao listar transações:", e);
+                    return { content: [] };
+                })
+            ]);
+
             if (resumoApi) {
                 setResumo({
                     saldoAtual: resumoApi.balance ?? resumoApi.saldoAtual ?? 0,
@@ -157,9 +170,7 @@ const Dashboard = () => {
                     ]);
                 }
             }
-
-            const transacoesApi = await transacaoService.listarTransacoes(walletId);
-            const conteudo = transacoesApi.content || transacoesApi;
+            const conteudo = transacoesApi?.content || transacoesApi || [];
             if (Array.isArray(conteudo)) {
                 setLancamentos(conteudo.map(t => {
                     let dataFormatada = "";
@@ -599,6 +610,9 @@ const Dashboard = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Diagnóstico e Insights Inteligentes com IA */}
+            <AiInsightsCard walletId={carteiraSelecionada?.id} />
 
             {/* 3. Tabela de Lançamentos Recentes */}
             <Card className="bg-slate-800 border-slate-700">

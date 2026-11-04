@@ -2,9 +2,10 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/services/AuthContext";
 
 export const RotaProtegida = () => {
-    const { estaAutenticado, carregandoInicial } = useAuth();
+    const { estaAutenticado, carregando, carregandoInicial } = useAuth();
+    const emCarregamento = carregando || carregandoInicial;
 
-    if (carregandoInicial) {
+    if (emCarregamento) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
                 <div className="flex flex-col items-center gap-3">
@@ -23,9 +24,10 @@ export const RotaProtegida = () => {
 };
 
 export const RotaPublica = () => {
-    const { estaAutenticado, carregandoInicial } = useAuth();
+    const { estaAutenticado, carregando, carregandoInicial } = useAuth();
+    const emCarregamento = carregando || carregandoInicial;
 
-    if (carregandoInicial) {
+    if (emCarregamento) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
                 <div className="flex flex-col items-center gap-3">

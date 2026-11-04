@@ -42,6 +42,7 @@ import CarteiraService from "@/services/CarteiraService";
 import TransacaoService from "@/services/TransacaoService";
 import CategoriaService from "@/services/CategoriaService";
 import { useAuth } from "@/services/AuthContext";
+import AiInsightsCard from "@/components/AiInsightsCard";
 
 const carteiraService = new CarteiraService();
 const transacaoService = new TransacaoService();
@@ -218,7 +219,10 @@ const Relatorios = () => {
     const dadosGraficoMensal = useMemo(() => {
         if (!relatorio?.porMes) return [];
         return relatorio.porMes.map(m => {
-            const [ano, mes] = m.mes.split("-");
+            if (!m || !m.mes || typeof m.mes !== "string") return { mes: "Outros", receitas: 0, despesas: 0, saldo: 0 };
+            const partes = m.mes.split("-");
+            const ano = partes[0] || "";
+            const mes = partes[1] || "";
             const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
             const nomeFormatado = `${mesesNomes[parseInt(mes, 10) - 1] || mes}/${ano}`;
             return {
@@ -355,44 +359,40 @@ const Relatorios = () => {
                             <button
                                 type="button"
                                 onClick={() => aplicarPreset("MES_ATUAL")}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                                    presetPeriodo === "MES_ATUAL"
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${presetPeriodo === "MES_ATUAL"
                                         ? "bg-emerald-950 border-emerald-500 text-emerald-300"
                                         : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-                                }`}
+                                    }`}
                             >
                                 Mês Atual
                             </button>
                             <button
                                 type="button"
                                 onClick={() => aplicarPreset("MES_ANTERIOR")}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                                    presetPeriodo === "MES_ANTERIOR"
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${presetPeriodo === "MES_ANTERIOR"
                                         ? "bg-emerald-950 border-emerald-500 text-emerald-300"
                                         : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-                                }`}
+                                    }`}
                             >
                                 Mês Anterior
                             </button>
                             <button
                                 type="button"
                                 onClick={() => aplicarPreset("ULTIMOS_3_MESES")}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                                    presetPeriodo === "ULTIMOS_3_MESES"
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${presetPeriodo === "ULTIMOS_3_MESES"
                                         ? "bg-emerald-950 border-emerald-500 text-emerald-300"
                                         : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-                                }`}
+                                    }`}
                             >
                                 Últimos 3 Meses
                             </button>
                             <button
                                 type="button"
                                 onClick={() => aplicarPreset("ANO_ATUAL")}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                                    presetPeriodo === "ANO_ATUAL"
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${presetPeriodo === "ANO_ATUAL"
                                         ? "bg-emerald-950 border-emerald-500 text-emerald-300"
                                         : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-                                }`}
+                                    }`}
                             >
                                 Ano Atual
                             </button>
@@ -497,6 +497,14 @@ const Relatorios = () => {
                 </div>
             )}
 
+            {/* Indicador de Carregamento */}
+            {carregando && (
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs flex items-center gap-2 animate-pulse print:hidden">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                    <span>Atualizando dados e extrato financeiro da carteira...</span>
+                </div>
+            )}
+
             {/* Indicadores Principais (KPIs) */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:grid-cols-4 print:gap-2">
                 {/* Total Receitas */}
@@ -534,11 +542,10 @@ const Relatorios = () => {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 print:text-slate-600">Saldo do Período</p>
-                            <h3 className={`text-xl font-black mt-1 ${
-                                Number(relatorio?.saldoLiquido || 0) >= 0
+                            <h3 className={`text-xl font-black mt-1 ${Number(relatorio?.saldoLiquido || 0) >= 0
                                     ? "text-emerald-400 print:text-emerald-700"
                                     : "text-rose-400 print:text-rose-700"
-                            }`}>
+                                }`}>
                                 {formatarDinheiro(relatorio?.saldoLiquido)}
                             </h3>
                         </div>
@@ -566,6 +573,14 @@ const Relatorios = () => {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Diagnóstico e Insights Inteligentes com IA (Google Gemini Gratuito) */}
+            <AiInsightsCard
+                walletId={carteiraSelecionada?.id}
+                startDate={startDate}
+                endDate={endDate}
+                tituloPeriodo={relatorio?.periodoDescricao}
+            />
 
             {/* Seção Gráfica: Distribuição por Categoria e Evolução Mensal */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:hidden">
@@ -776,19 +791,17 @@ const Relatorios = () => {
                                                     </span>
                                                 </td>
                                                 <td className="p-3 text-center whitespace-nowrap">
-                                                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${
-                                                        ehReceita
+                                                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border ${ehReceita
                                                             ? "bg-emerald-950/80 border-emerald-600 text-emerald-300 print:bg-emerald-50 print:text-emerald-800"
                                                             : "bg-rose-950/80 border-rose-600 text-rose-300 print:bg-rose-50 print:text-rose-800"
-                                                    }`}>
+                                                        }`}>
                                                         {ehReceita ? "+ RECEITA" : "- DESPESA"}
                                                     </span>
                                                 </td>
-                                                <td className={`p-3 text-right font-mono font-bold whitespace-nowrap ${
-                                                    ehReceita
+                                                <td className={`p-3 text-right font-mono font-bold whitespace-nowrap ${ehReceita
                                                         ? "text-emerald-400 print:text-emerald-700"
                                                         : "text-rose-400 print:text-rose-700"
-                                                }`}>
+                                                    }`}>
                                                     {ehReceita ? "+ " : "- "}
                                                     {formatarDinheiro(t.valor)}
                                                 </td>
@@ -805,11 +818,10 @@ const Relatorios = () => {
                                         <td colSpan="5" className="p-3 text-right text-slate-300 print:text-slate-800 uppercase tracking-wider text-[11px]">
                                             Saldo Líquido Consolidado do Extrato:
                                         </td>
-                                        <td className={`p-3 text-right font-mono text-sm ${
-                                            Number(relatorio?.saldoLiquido || 0) >= 0
+                                        <td className={`p-3 text-right font-mono text-sm ${Number(relatorio?.saldoLiquido || 0) >= 0
                                                 ? "text-emerald-400 print:text-emerald-800"
                                                 : "text-rose-400 print:text-rose-800"
-                                        }`}>
+                                            }`}>
                                             {formatarDinheiro(relatorio?.saldoLiquido)}
                                         </td>
                                     </tr>
