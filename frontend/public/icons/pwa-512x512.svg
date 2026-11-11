@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="pwaGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="40%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <filter id="glow512" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad512)" stroke="#1e293b" stroke-width="8" />
+  
+  <!-- Subtle Neon Background Glow -->
+  <circle cx="256" cy="256" r="140" fill="#10b981" opacity="0.12" filter="url(#glow512)" />
+
+  <!-- Wallet Body -->
+  <rect x="96" y="152" width="320" height="224" rx="42" fill="none" stroke="url(#pwaGrad512)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Wallet Flap -->
+  <path d="M 96 220 L 416 220" stroke="url(#pwaGrad512)" stroke-width="20" stroke-linecap="round" />
+  
+  <!-- Wallet Clasp -->
+  <rect x="304" y="232" width="90" height="64" rx="20" fill="#10b981" stroke="#0f172a" stroke-width="8" />
+  <circle cx="336" cy="264" r="10" fill="#ffffff" />
+  
+  <!-- Financial Growth Arrow -->
+  <path d="M 160 310 L 220 260 L 270 290 L 330 230" fill="none" stroke="#38bdf8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+  <polyline points="300,230 330,230 330,260" fill="none" stroke="#38bdf8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Sparkle of AI (Top Right) -->
+  <path d="M 390 120 Q 390 150 420 150 Q 390 150 390 180 Q 390 150 360 150 Q 390 150 390 120 Z" fill="#38bdf8" />
+</svg>
+

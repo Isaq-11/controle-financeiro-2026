@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/services/AuthContext";
 import { LayoutDashboard, KeyRound, LogOut, Wallet, Menu, X, Users, Tag, BarChart3 } from "lucide-react";
+import PwaInstallBanner from "./PwaInstallBanner";
 
 // Layout base com menu lateral (Sidebar) e topo para o estudante entender
 const AppLayout = () => {
@@ -16,19 +17,17 @@ const AppLayout = () => {
 
     // Classe para destacar o link ativo do menu
     const obterClasseLink = ({ isActive }) =>
-        `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
-            isActive
-                ? "bg-slate-800 text-slate-100 border border-slate-700"
-                : "text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+        `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${isActive
+            ? "bg-slate-800 text-slate-100 border border-slate-700"
+            : "text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
         }`;
 
     return (
         <div className="min-h-screen flex bg-slate-950 text-slate-100">
             {/* Sidebar Lateral para computadores / telas grandes */}
             <aside
-                className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-200 lg:translate-x-0 ${
-                    menuMobileAberto ? "translate-x-0" : "-translate-x-full"
-                }`}
+                className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-200 lg:translate-x-0 ${menuMobileAberto ? "translate-x-0" : "-translate-x-full"
+                    }`}
             >
                 <div className="p-5">
                     {/* Nome do Sistema */}
@@ -70,6 +69,9 @@ const AppLayout = () => {
                         </NavLink>
                     </nav>
                 </div>
+
+                {/* Banner de Instalação PWA (se suportado pelo navegador) */}
+                <PwaInstallBanner />
 
                 {/* Dados do Usuario Logado no Rodape da Sidebar */}
                 <div className="p-4 border-t border-slate-800 bg-slate-900">

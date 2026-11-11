@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="pwaGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="bgGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+  </defs>
+  <!-- Background Card -->
+  <rect width="192" height="192" rx="42" fill="url(#bgGrad192)" stroke="#1e293b" stroke-width="4" />
+  
+  <!-- Wallet Body -->
+  <rect x="36" y="56" width="120" height="84" rx="16" fill="none" stroke="url(#pwaGrad192)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Wallet Flap -->
+  <path d="M 36 82 L 156 82" stroke="url(#pwaGrad192)" stroke-width="8" stroke-linecap="round" />
+  
+  <!-- Wallet Clasp -->
+  <rect x="114" y="86" width="34" height="24" rx="8" fill="#10b981" stroke="#0f172a" stroke-width="3" />
+  <circle cx="126" cy="98" r="4" fill="#ffffff" />
+  
+  <!-- Sparkle of AI / Growth -->
+  <path d="M 148 44 Q 148 56 160 56 Q 148 56 148 68 Q 148 56 136 56 Q 148 56 148 44 Z" fill="#38bdf8" />
+</svg>
+
