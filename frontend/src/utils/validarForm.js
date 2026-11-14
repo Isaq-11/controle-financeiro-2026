@@ -45,12 +45,12 @@ export const validarNome = (nome) => {
 // Avalia a forca da senha em: Fraca, Media ou Forte
 export const calcularForcaSenha = (senha) => {
     if (!senha) return { label: "", cor: "" };
-    
+
     // Regra simples: tamanho da senha
     if (senha.length < 6) {
         return { label: "Muito curta", cor: "bg-rose-600 text-rose-300" };
     }
-    
+
     // Se tiver letras e numeros e mais de 8 caracteres e forte
     const temNumero = /\d/.test(senha);
     const temLetra = /[a-zA-Z]/.test(senha);
