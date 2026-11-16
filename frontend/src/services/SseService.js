@@ -14,7 +14,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081
 export function conectarEventosSse(token, callbacks = {}) {
     if (!token) {
         if (callbacks.onStatus) callbacks.onStatus(false);
-        return () => {};
+        return () => { };
     }
 
     const streamUrl = `${API_BASE_URL}/api/v1/stream?token=${encodeURIComponent(token)}`;

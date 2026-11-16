@@ -1,6 +1,6 @@
 import api from '../configs/axiosConfig';
 
- class BaseService {
+class BaseService {
   constructor(endPoint) {
     this.endPoint = endPoint;
     this.api = api;
