@@ -22,7 +22,12 @@ export function conectarEventosSse(token, callbacks = {}) {
 
     if (callbacks.onStatus) callbacks.onStatus(false); // Inicia tentando conectar
 
-    // 1. Confirmação inicial do backend
+    // 1. Confirmação nativa de abertura da conexão HTTP do EventSource
+    eventSource.onopen = () => {
+        if (callbacks.onStatus) callbacks.onStatus(true);
+    };
+
+    // 2. Confirmação do evento "conectado" emitido pelo backend
     eventSource.addEventListener("conectado", (e) => {
         if (callbacks.onStatus) callbacks.onStatus(true);
         if (callbacks.onConectado) callbacks.onConectado(e.data);

@@ -18,15 +18,147 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { BalanceHero } from "@/components/ui/stat";
+import { Segmented } from "@/components/ui/segmented";
 import { EmptyState, LoadingState } from "@/components/ui/feedback";
 import { useToast, useConfirm } from "@/components/ui/feedback-provider";
-import { dataLocalISO, formatarCompacto, mensagemDeErro, rotuloMes } from "@/lib/format";
+import { dataLocalISO, formatarCompacto, mensagemDeErro } from "@/lib/format";
 
 const carteiraService = new CarteiraService();
 const transacaoService = new TransacaoService();
 const categoriaService = new CategoriaService();
 
 const LIMITE_RECENTES = 10;
+
+// Calcula intervalos de datas para os filtros da linha do tempo
+const obterDatasDoPeriodo = (tipo) => {
+    const hoje = new Date();
+    const formatarData = (d) => {
+        const ano = d.getFullYear();
+        const mes = String(d.getMonth() + 1).padStart(2, "0");
+        const dia = String(d.getDate()).padStart(2, "0");
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    if (tipo === "quinzenal") {
+        // Últimos 15 dias (14 dias atrás até hoje)
+        const inicio = new Date(hoje);
+        inicio.setDate(hoje.getDate() - 14);
+        return {
+            startDate: formatarData(inicio),
+            endDate: formatarData(hoje),
+            rotulo: "Quinzenal (últimos 15 dias)",
+        };
+    }
+
+    if (tipo === "mensal") {
+        // Mês atual completo
+        const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        return {
+            startDate: formatarData(inicio),
+            endDate: formatarData(fim),
+            rotulo: "Mensal (mês atual)",
+        };
+    }
+
+    if (tipo === "anual") {
+        // Ano atual
+        const inicio = new Date(hoje.getFullYear(), 0, 1);
+        const fim = new Date(hoje.getFullYear(), 11, 31);
+        return {
+            startDate: formatarData(inicio),
+            endDate: formatarData(fim),
+            rotulo: `Anual (${hoje.getFullYear()})`,
+        };
+    }
+
+    return { startDate: null, endDate: null, rotulo: "Geral" };
+};
+
+// Gera os pontos do gráfico adequados à escala temporal escolhida
+const gerarDadosGrafico = (tipoPeriodo, resumoApi, transacoes) => {
+    const hoje = new Date();
+
+    if (tipoPeriodo === "quinzenal") {
+        // Gera os 15 dias exatos para mostrar a evolução dia a dia
+        const dias = [];
+        for (let i = 14; i >= 0; i--) {
+            const d = new Date(hoje);
+            d.setDate(hoje.getDate() - i);
+            const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            const rotulo = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+            dias.push({ iso, periodo: rotulo, receitas: 0, despesas: 0 });
+        }
+
+        const mapa = new Map(dias.map((item) => [item.iso, item]));
+        transacoes.forEach((t) => {
+            const dataStr = t.data ? t.data.slice(0, 10) : "";
+            const bucket = mapa.get(dataStr);
+            if (bucket) {
+                const val = Number(t.valor || 0);
+                if (t.tipo === "RECEITA") bucket.receitas += val;
+                else if (t.tipo === "DESPESA") bucket.despesas += val;
+            }
+        });
+        return dias;
+    }
+
+    if (tipoPeriodo === "mensal") {
+        // Gera todos os dias do mês atual
+        const ano = hoje.getFullYear();
+        const mes = hoje.getMonth();
+        const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+        const diasMes = [];
+        for (let d = 1; d <= ultimoDia; d++) {
+            const iso = `${ano}-${String(mes + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const rotulo = `${String(d).padStart(2, "0")}/${String(mes + 1).padStart(2, "0")}`;
+            diasMes.push({ iso, periodo: rotulo, receitas: 0, despesas: 0 });
+        }
+
+        const mapa = new Map(diasMes.map((item) => [item.iso, item]));
+        transacoes.forEach((t) => {
+            const dataStr = t.data ? t.data.slice(0, 10) : "";
+            const bucket = mapa.get(dataStr);
+            if (bucket) {
+                const val = Number(t.valor || 0);
+                if (t.tipo === "RECEITA") bucket.receitas += val;
+                else if (t.tipo === "DESPESA") bucket.despesas += val;
+            }
+        });
+        return diasMes;
+    }
+
+    // Padrão ANUAL: agrupamento por 12 meses
+    const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const meses = mesesNomes.map((nome, idx) => {
+        const mesIso = `${hoje.getFullYear()}-${String(idx + 1).padStart(2, "0")}`;
+        return { iso: mesIso, periodo: nome, receitas: 0, despesas: 0 };
+    });
+
+    const mapaMeses = new Map(meses.map((item) => [item.iso, item]));
+    if (Array.isArray(resumoApi?.byMonth) && resumoApi.byMonth.length > 0) {
+        resumoApi.byMonth.forEach((m) => {
+            const bucket = mapaMeses.get(m.month);
+            if (bucket) {
+                bucket.receitas = Number(m.income || 0);
+                bucket.despesas = Number(m.expense || 0);
+            }
+        });
+    } else {
+        transacoes.forEach((t) => {
+            if (t.data) {
+                const mesIso = t.data.slice(0, 7);
+                const bucket = mapaMeses.get(mesIso);
+                if (bucket) {
+                    const val = Number(t.valor || 0);
+                    if (t.tipo === "RECEITA") bucket.receitas += val;
+                    else if (t.tipo === "DESPESA") bucket.despesas += val;
+                }
+            }
+        });
+    }
+    return meses;
+};
 
 const Dashboard = () => {
     const { usuarioLogado } = useAuth();
@@ -43,6 +175,9 @@ const Dashboard = () => {
     const [lancamentos, setLancamentos] = useState([]);
     const [conectadoSse, setConectadoSse] = useState(false);
 
+    // Filtro inicial padrão: quinzenal
+    const [filtroPeriodo, setFiltroPeriodo] = useState("quinzenal");
+
     const [modalAberto, setModalAberto] = useState(false);
     const [transacaoEditando, setTransacaoEditando] = useState(null);
 
@@ -50,6 +185,11 @@ const Dashboard = () => {
     useEffect(() => {
         carteiraSelecionadaRef.current = carteiraSelecionada;
     }, [carteiraSelecionada]);
+
+    const filtroPeriodoRef = useRef("quinzenal");
+    useEffect(() => {
+        filtroPeriodoRef.current = filtroPeriodo;
+    }, [filtroPeriodo]);
 
     useEffect(() => {
         carregarDados();
@@ -59,15 +199,22 @@ const Dashboard = () => {
             onStatus: setConectadoSse,
             onTransacaoAlterada: (dados) => {
                 const atual = carteiraSelecionadaRef.current;
-                if (atual && Number(dados.carteiraId) === Number(atual.id)) carregarDadosCarteira(atual.id);
+                const ehMesmaCarteira = atual && Number(dados.carteiraId) === Number(atual.id);
 
+                // Se o usuário está observando a carteira que foi alterada, atualiza imediatamente em tempo real
+                if (ehMesmaCarteira) {
+                    carregarDadosCarteira(atual.id, filtroPeriodoRef.current);
+                }
+
+                // Notificação exibida independentemente de qual carteira o membro está vendo
                 const acao = dados.acao === "CRIADA" ? "adicionado" : dados.acao === "ATUALIZADA" ? "atualizado" : "removido";
                 const autor = dados.autorNome ? ` por ${dados.autorNome}` : "";
-                toast.info(`Lançamento ${acao}${autor}: ${dados.descricao || "sem descrição"}`);
+                const prefixoCarteira = !ehMesmaCarteira && dados.carteiraNome ? `[${dados.carteiraNome}] ` : "";
+                toast.info(`${prefixoCarteira}Lançamento ${acao}${autor}: ${dados.descricao || "sem descrição"}`);
             },
             onCarteiraAlterada: () => {
                 carregarDados(carteiraSelecionadaRef.current?.id);
-                toast.info("Carteira atualizada.");
+                toast.info("Carteira atualizada em tempo real.");
             },
         });
         return () => encerrarSse();
@@ -90,7 +237,7 @@ const Dashboard = () => {
             if (lista.length > 0) {
                 const alvo = lista.find((c) => c.id === manterCarteiraId) || lista[0];
                 setCarteiraSelecionada(alvo);
-                await carregarDadosCarteira(alvo.id);
+                await carregarDadosCarteira(alvo.id, filtroPeriodoRef.current);
             } else {
                 setCarteiraSelecionada(null);
                 setLancamentos([]);
@@ -105,12 +252,21 @@ const Dashboard = () => {
         }
     };
 
-    const carregarDadosCarteira = async (walletId) => {
+    const carregarDadosCarteira = async (walletId, tipoPeriodo = filtroPeriodoRef.current) => {
         try {
+            const { startDate, endDate } = obterDatasDoPeriodo(tipoPeriodo);
+            const paramsSummary = {};
+            if (startDate) paramsSummary.startDate = startDate;
+            if (endDate) paramsSummary.endDate = endDate;
+
             const [resumoApi, transacoesApi] = await Promise.all([
-                carteiraService.obterResumo(walletId).catch(() => null),
-                transacaoService.listarTransacoes(walletId).catch(() => ({ content: [] })),
+                carteiraService.obterResumo(walletId, paramsSummary).catch(() => null),
+                transacaoService.listarTransacoes(walletId, { size: 100 }).catch(() => ({ content: [] })),
             ]);
+
+            const conteudo = transacoesApi?.content || transacoesApi || [];
+            const listaTransacoes = Array.isArray(conteudo) ? conteudo : [];
+            setLancamentos(listaTransacoes);
 
             if (resumoApi) {
                 setResumo({
@@ -118,19 +274,9 @@ const Dashboard = () => {
                     totalReceitas: resumoApi.totalIncome ?? resumoApi.totalReceitas ?? 0,
                     totalDespesas: resumoApi.totalExpense ?? resumoApi.totalDespesas ?? 0,
                 });
-                setGrafico(
-                    Array.isArray(resumoApi.byMonth) && resumoApi.byMonth.length > 0
-                        ? resumoApi.byMonth.map((m) => ({
-                            periodo: rotuloMes(m.month),
-                            receitas: Number(m.income || 0),
-                            despesas: Number(m.expense || 0),
-                        }))
-                        : []
-                );
             }
 
-            const conteudo = transacoesApi?.content || transacoesApi || [];
-            setLancamentos(Array.isArray(conteudo) ? conteudo : []);
+            setGrafico(gerarDadosGrafico(tipoPeriodo, resumoApi, listaTransacoes));
 
             try {
                 const cats = await categoriaService.listarPorCarteira(walletId);
@@ -147,7 +293,14 @@ const Dashboard = () => {
         const achada = carteiras.find((c) => c.id === id);
         if (!achada) return;
         setCarteiraSelecionada(achada);
-        await carregarDadosCarteira(achada.id);
+        await carregarDadosCarteira(achada.id, filtroPeriodo);
+    };
+
+    const mudarPeriodo = async (novoPeriodo) => {
+        setFiltroPeriodo(novoPeriodo);
+        if (carteiraSelecionada?.id) {
+            await carregarDadosCarteira(carteiraSelecionada.id, novoPeriodo);
+        }
     };
 
     const abrirNovo = () => {
@@ -167,7 +320,7 @@ const Dashboard = () => {
         } else {
             await transacaoService.criarTransacao(carteiraSelecionada.id, categoriaId, dto);
         }
-        await carregarDadosCarteira(carteiraSelecionada.id);
+        await carregarDadosCarteira(carteiraSelecionada.id, filtroPeriodo);
         setModalAberto(false);
         toast.success(transacaoEditando ? "Lançamento atualizado." : "Lançamento adicionado.");
     };
@@ -182,7 +335,7 @@ const Dashboard = () => {
         if (!ok) return;
         try {
             await transacaoService.excluirTransacao(carteiraSelecionada.id, t.id);
-            await carregarDadosCarteira(carteiraSelecionada.id);
+            await carregarDadosCarteira(carteiraSelecionada.id, filtroPeriodo);
             toast.success("Lançamento excluído.");
         } catch (err) {
             toast.error(mensagemDeErro(err, "Não foi possível excluir o lançamento."));
@@ -219,6 +372,7 @@ const Dashboard = () => {
         );
     }
 
+    const infoPeriodo = obterDatasDoPeriodo(filtroPeriodo);
     const recentes = lancamentos.slice(0, LIMITE_RECENTES);
 
     return (
@@ -252,11 +406,25 @@ const Dashboard = () => {
             </Card>
 
             <Card>
-                <CardHeader title="Fluxo mensal" subtitle="Receitas e despesas por mês nesta carteira" />
+                <CardHeader
+                    title="Linha do tempo"
+                    subtitle={`Fluxo financeiro (${infoPeriodo.rotulo})`}
+                    actions={
+                        <Segmented
+                            options={[
+                                { value: "quinzenal", label: "Quinzenal" },
+                                { value: "mensal", label: "Mensal" },
+                                { value: "anual", label: "Anual" },
+                            ]}
+                            value={filtroPeriodo}
+                            onChange={mudarPeriodo}
+                        />
+                    }
+                />
                 {grafico.length === 0 ? (
                     <EmptyState title="Sem histórico ainda">Os gráficos aparecem assim que houver lançamentos.</EmptyState>
                 ) : (
-                    <div className="chart" role="img" aria-label="Gráfico de receitas e despesas por mês">
+                    <div className="chart" role="img" aria-label="Gráfico de receitas e despesas por período">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={grafico} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                                 <CartesianGrid vertical={false} stroke={CORES_GRAFICO.grade} />
@@ -271,7 +439,12 @@ const Dashboard = () => {
                 )}
             </Card>
 
-            <AiInsightsCard walletId={carteiraSelecionada.id} />
+            <AiInsightsCard
+                walletId={carteiraSelecionada.id}
+                startDate={infoPeriodo.startDate}
+                endDate={infoPeriodo.endDate}
+                tituloPeriodo={infoPeriodo.rotulo}
+            />
 
             <Card flush>
                 <CardHeader

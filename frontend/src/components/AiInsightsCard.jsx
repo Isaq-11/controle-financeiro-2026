@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Lightbulb, Sparkles } from "lucide-react";
 import AiService from "@/services/AiService";
 import { Card } from "@/components/ui/card";
@@ -41,12 +41,29 @@ function Lista({ titulo, icone: Icone, itens, vazio, cor, numerada }) {
 }
 
 // Diagnóstico gerado por IA para a carteira (e período, quando informado).
-// Só o violeta da interface aparece aqui, para distinguir o que veio da IA.
+// Mantém os diagnósticos em cache por carteira para que não se misturem nem se percam na troca.
 const AiInsightsCard = ({ walletId, startDate, endDate, tituloPeriodo }) => {
     const [carregando, setCarregando] = useState(false);
-    const [insights, setInsights] = useState(null);
     const [erro, setErro] = useState("");
     const [guiaAberto, setGuiaAberto] = useState(false);
+
+    // Cache de diagnósticos por ID da carteira persistido na sessão
+    const [cachePorCarteira, setCachePorCarteira] = useState(() => {
+        try {
+            const salvo = sessionStorage.getItem("ai_insights_cache");
+            return salvo ? JSON.parse(salvo) : {};
+        } catch {
+            return {};
+        }
+    });
+
+    const chaveCarteira = walletId ? String(walletId) : "";
+    const insights = chaveCarteira ? cachePorCarteira[chaveCarteira] || null : null;
+
+    // Ao trocar a carteira selecionada, reseta mensagens de erro anteriores
+    useEffect(() => {
+        setErro("");
+    }, [walletId]);
 
     const gerar = async () => {
         if (!walletId) return;
@@ -57,8 +74,20 @@ const AiInsightsCard = ({ walletId, startDate, endDate, tituloPeriodo }) => {
             if (startDate) params.startDate = startDate;
             if (endDate) params.endDate = endDate;
             const resultado = await aiService.gerarInsights(walletId, params);
-            setInsights(resultado);
-            if (resultado.status === "ERRO") setErro(resultado.mensagem || "Não foi possível gerar a análise.");
+
+            if (resultado.status === "ERRO") {
+                setErro(resultado.mensagem || "Não foi possível gerar a análise.");
+            } else {
+                setCachePorCarteira((prev) => {
+                    const novo = { ...prev, [String(walletId)]: resultado };
+                    try {
+                        sessionStorage.setItem("ai_insights_cache", JSON.stringify(novo));
+                    } catch {
+                        // ignore quota error
+                    }
+                    return novo;
+                });
+            }
         } catch (err) {
             setErro(mensagemDeErro(err, "Falha na comunicação com o servidor."));
         } finally {

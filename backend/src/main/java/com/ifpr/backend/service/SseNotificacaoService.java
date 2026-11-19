@@ -1,8 +1,10 @@
 package com.ifpr.backend.service;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -16,6 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.ifpr.backend.model.CarteiraMembro;
 import com.ifpr.backend.repository.CarteiraMembroRepository;
+import com.ifpr.backend.repository.CarteiraRepository;
 
 @Service
 public class SseNotificacaoService {
@@ -30,6 +33,9 @@ public class SseNotificacaoService {
 
     @Autowired
     private CarteiraMembroRepository carteiraMembroRepository;
+
+    @Autowired
+    private CarteiraRepository carteiraRepository;
 
     /**
      * Registra uma nova conexão SSE para o usuário autenticado.
@@ -92,14 +98,38 @@ public class SseNotificacaoService {
     }
 
     /**
-     * Notifica todos os membros que participam de uma determinada carteira compartilhada.
+     * Notifica todos os membros que participam de uma determinada carteira compartilhada,
+     * incluindo tanto o dono quanto todos os membros com permissões de acesso.
      */
     public void notificarMembrosCarteira(Long carteiraId, String evento, Object dados) {
-        List<CarteiraMembro> membros = carteiraMembroRepository.findByCarteiraId(carteiraId);
-        for (CarteiraMembro membro : membros) {
-            if (membro.getUsuario() != null && membro.getUsuario().getId() != null) {
-                notificarUsuario(membro.getUsuario().getId(), evento, dados);
+        Set<Long> destinatarios = new HashSet<>();
+
+        // 1. Garante que o dono da carteira seja sempre incluído
+        try {
+            carteiraRepository.findById(carteiraId).ifPresent(c -> {
+                if (c.getDono() != null && c.getDono().getId() != null) {
+                    destinatarios.add(c.getDono().getId());
+                }
+            });
+        } catch (Exception e) {
+            logger.warn("Erro ao buscar dono da carteira {}: {}", carteiraId, e.getMessage());
+        }
+
+        // 2. Inclui todos os membros registrados na carteira compartilhada
+        try {
+            List<CarteiraMembro> membros = carteiraMembroRepository.findByCarteiraId(carteiraId);
+            for (CarteiraMembro membro : membros) {
+                if (membro.getUsuario() != null && membro.getUsuario().getId() != null) {
+                    destinatarios.add(membro.getUsuario().getId());
+                }
             }
+        } catch (Exception e) {
+            logger.warn("Erro ao buscar membros da carteira {}: {}", carteiraId, e.getMessage());
+        }
+
+        // 3. Notifica todos os destinatários únicos conectados
+        for (Long usuarioId : destinatarios) {
+            notificarUsuario(usuarioId, evento, dados);
         }
     }
 
