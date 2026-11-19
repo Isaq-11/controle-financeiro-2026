@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { PageHeader } from "@/components/ui/page-header";
-import { Card } from "@/components/ui/card";
+import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { PasswordField } from "@/components/forms/PasswordField";
@@ -34,7 +34,7 @@ const AlteracaoSenha = () => {
         setCarregando(true);
         try {
             await alterarSenhaAtual(senhaAtual, novaSenha);
-            toast.success("Senha alterada.");
+            toast.success("Senha alterada com sucesso.");
             setSenhaAtual("");
             setNovaSenha("");
             setConfirmacao("");
@@ -46,41 +46,53 @@ const AlteracaoSenha = () => {
     };
 
     return (
-        <>
-            <PageHeader title="Alterar senha" subtitle="Informe a senha atual para confirmar que a conta é sua." />
-            <Card style={{ maxWidth: "28rem" }}>
-                <form onSubmit={salvar} className="stack" noValidate>
-                    {erroGeral && <Alert>{erroGeral}</Alert>}
-                    <PasswordField
-                        label="Senha atual"
-                        autoComplete="current-password"
-                        value={senhaAtual}
-                        onChange={(e) => setSenhaAtual(e.target.value)}
-                        error={erros.atual}
-                    />
-                    <PasswordField
-                        label="Nova senha"
-                        autoComplete="new-password"
-                        showStrength
-                        value={novaSenha}
-                        onChange={(e) => setNovaSenha(e.target.value)}
-                        error={erros.nova}
-                    />
-                    <PasswordField
-                        label="Confirmar nova senha"
-                        autoComplete="new-password"
-                        value={confirmacao}
-                        onChange={(e) => setConfirmacao(e.target.value)}
-                        error={erros.confirmacao}
-                    />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "calc(100vh - 12rem)", padding: "var(--s-4) 0" }}>
+            <div className="auth__panel">
+                <div className="card stack stack--lg">
                     <div>
-                        <Button type="submit" loading={carregando}>
+                        <h1 className="auth__title">Alterar senha</h1>
+                        <p className="auth__sub">Informe a senha atual para confirmar que a conta é sua e defina uma nova senha.</p>
+                    </div>
+
+                    {erroGeral && <Alert>{erroGeral}</Alert>}
+
+                    <form onSubmit={salvar} className="stack" noValidate>
+                        <PasswordField
+                            label="Senha atual"
+                            autoComplete="current-password"
+                            value={senhaAtual}
+                            onChange={(e) => setSenhaAtual(e.target.value)}
+                            error={erros.atual}
+                        />
+                        <PasswordField
+                            label="Nova senha"
+                            autoComplete="new-password"
+                            showStrength
+                            value={novaSenha}
+                            onChange={(e) => setNovaSenha(e.target.value)}
+                            error={erros.nova}
+                            hint="Mínimo de 6 caracteres."
+                        />
+                        <PasswordField
+                            label="Confirmar nova senha"
+                            autoComplete="new-password"
+                            value={confirmacao}
+                            onChange={(e) => setConfirmacao(e.target.value)}
+                            error={erros.confirmacao}
+                        />
+                        <Button type="submit" block loading={carregando}>
                             Salvar nova senha
                         </Button>
-                    </div>
-                </form>
-            </Card>
-        </>
+                    </form>
+                </div>
+
+                <p className="auth__foot">
+                    <Link to="/dashboard" className="link" style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-1)" }}>
+                        <ArrowLeft className="icon icon--sm" aria-hidden="true" /> Voltar ao Painel
+                    </Link>
+                </p>
+            </div>
+        </div>
     );
 };
 

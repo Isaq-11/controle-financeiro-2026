@@ -38,6 +38,9 @@ public class SseController {
             token = authHeader.replace("Bearer ", "").trim();
         } else if (tokenParam != null && !tokenParam.isBlank()) {
             token = tokenParam.trim();
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7).trim();
+            }
         }
 
         if (token == null) {

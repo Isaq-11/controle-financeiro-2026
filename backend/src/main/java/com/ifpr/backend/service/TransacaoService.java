@@ -85,6 +85,7 @@ public class TransacaoService {
 
         Map<String, Object> evento = new HashMap<>();
         evento.put("carteiraId", carteiraId);
+        evento.put("carteiraNome", carteira.getNome());
         evento.put("acao", "CRIADA");
         evento.put("transacaoId", salva.getId());
         evento.put("descricao", salva.getDescricao());
@@ -122,6 +123,7 @@ public class TransacaoService {
 
         Map<String, Object> evento = new HashMap<>();
         evento.put("carteiraId", carteiraId);
+        evento.put("carteiraNome", dbTransacao.getCarteira() != null ? dbTransacao.getCarteira().getNome() : "Carteira");
         evento.put("acao", "ATUALIZADA");
         evento.put("transacaoId", salva.getId());
         evento.put("descricao", salva.getDescricao());
@@ -142,11 +144,13 @@ public class TransacaoService {
         String desc = dbTransacao.getDescricao();
         BigDecimal val = dbTransacao.getValor();
         TipoTransacao tipo = dbTransacao.getTipo();
+        String nomeCarteira = dbTransacao.getCarteira() != null ? dbTransacao.getCarteira().getNome() : "Carteira";
 
         transacaoRepository.delete(dbTransacao);
 
         Map<String, Object> evento = new HashMap<>();
         evento.put("carteiraId", carteiraId);
+        evento.put("carteiraNome", nomeCarteira);
         evento.put("acao", "EXCLUIDA");
         evento.put("transacaoId", id);
         evento.put("descricao", desc);
